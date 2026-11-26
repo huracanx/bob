@@ -41,35 +41,53 @@ jobs:
       - name: Build (Release Win32)
         run: msbuild 1_kej.sln /m /verbosity:minimal /p:Configuration=Release /p:Platform=x86
 
+      - name: Locate 1_kej.asi
+        shell: pwsh
+        run: |
+          $found = Get-ChildItem -Path . -Filter "1_kej.asi" -Recurse -File -ErrorAction SilentlyContinue |
+                   Where-Object { $_.FullName -notlike "*\package\*" } |
+                   Select-Object -First 1
+          if (-not $found) {
+            Write-Host "=== 1_kej.asi not found. Dump of built binaries: ==="
+            Get-ChildItem -Path . -Recurse -File -Include "*.asi","*.dll","*.exe" -ErrorAction SilentlyContinue |
+              Select-Object FullName, Length | Format-Table -AutoSize
+            throw "1_kej.asi not found anywhere in the workspace"
+          }
+          Write-Host "Found: $($found.FullName) ($($found.Length) bytes)"
+          "ASI_PATH=$($found.FullName)" | Out-File -FilePath $env:GITHUB_ENV -Append
+
       - name: Verify 1_kej.asi
         shell: pwsh
         run: |
-          $asi = "build\Release\1_kej.asi"
-          if (-not (Test-Path $asi)) { throw "build failed: $asi not found" }
+          $asi = $env:ASI_PATH
           # sanity check: must be a 32-bit (0x14C) PE DLL
-          $fs = [System.IO.File]::OpenRead((Resolve-Path $asi))
+          $fs = [System.IO.File]::OpenRead($asi)
           $br = New-Object System.IO.BinaryReader($fs)
           $fs.Seek(0x3C, 'Begin') | Out-Null
           $fs.Seek($br.ReadInt32(), 'Begin') | Out-Null
-          if ($br.ReadUInt16() -ne 0x5A4D) { throw "not a PE file" }
+          if ($br.ReadUInt16() -ne 0x5A4D) { $fs.Close(); throw "not a PE file" }
           $fs.Seek(0x14, 'Current') | Out-Null
           $machine = $br.ReadUInt16()
           $fs.Close()
           if ($machine -ne 0x14C) { throw "unexpected machine type 0x$($machine.ToString('X')) - expected 0x14C (x86)" }
           Write-Host "OK: $((Get-Item $asi).Length) bytes, PE32 x86"
 
-      - name: Assemble package (.asi + resources)
+      - name: Assemble package (miles/1_kej.asi + 1_kej/images)
         shell: pwsh
         run: |
-          New-Item -ItemType Directory -Force -Path "package\1_kej\images" | Out-Null
+          New-Item -ItemType Directory -Force -Path "package\miles", "package\1_kej\images" | Out-Null
 
-          Copy-Item "build\Release\1_kej.asi" "package\"
+          # .asi goes into miles/
+          Copy-Item $env:ASI_PATH "package\miles\1_kej.asi"
+
           # runtime dependency for players without the DirectX end-user runtime
-          Copy-Item "$env:TEMP\d3dx_pkg\build\native\release\bin\x86\D3DX9_43.dll" "package\"
+          Copy-Item "$env:TEMP\d3dx_pkg\build\native\release\bin\x86\D3DX9_43.dll" "package\miles\"
 
-          # user resources: put menu images into resources\1_kej\images in the repo
-          if (Test-Path "resources") {
-            Copy-Item "resources\*" "package\" -Recurse -Force
+          # menu images live in resources\1_kej\images in the repo
+          if (Test-Path "resources\1_kej\images") {
+            Copy-Item "resources\1_kej\images\*" "package\1_kej\images\" -Recurse -Force
+          } else {
+            Write-Warning "resources\1_kej\images not found - package\1_kej\images will be empty"
           }
 
           # warn about missing menu images (mod refuses to load without them)
