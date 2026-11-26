@@ -118,6 +118,19 @@ void cg::Mod_A_AutoFPS()
 	}
 
 	com_maxfps->current.integer = fps;
+
+	// CoD4x UserCVAR: values set with "setu" are included in client userinfo
+	// and are updated to the server when changed. The server-side scoreboard
+	// plugin can read this value through getuserinfo("com_maxfps").
+	// Send only when the selected FPS changes to avoid reliable-command spam.
+	static int lastReportedFPS = -1;
+	if (fps != lastReportedFPS)
+	{
+		char fpsUserinfoCommand[64]{};
+		sprintf_s(fpsUserinfoCommand, sizeof(fpsUserinfoCommand), "setu com_maxfps %d\n", fps);
+		Cbuf_AddText(fpsUserinfoCommand, 0);
+		lastReportedFPS = fps;
+	}
 }
 void cg::Mod_A_AdjustRPG(pmove_t* pm, pml_t* pml)
 {
