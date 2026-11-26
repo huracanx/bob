@@ -60,16 +60,31 @@ jobs:
         shell: pwsh
         run: |
           $asi = $env:ASI_PATH
-          # sanity check: must be a 32-bit (0x14C) PE DLL
-          $fs = [System.IO.File]::OpenRead($asi)
-          $br = New-Object System.IO.BinaryReader($fs)
-          $fs.Seek(0x3C, 'Begin') | Out-Null
-          $fs.Seek($br.ReadInt32(), 'Begin') | Out-Null
-          if ($br.ReadUInt16() -ne 0x5A4D) { $fs.Close(); throw "not a PE file" }
-          $fs.Seek(0x14, 'Current') | Out-Null
-          $machine = $br.ReadUInt16()
-          $fs.Close()
-          if ($machine -ne 0x14C) { throw "unexpected machine type 0x$($machine.ToString('X')) - expected 0x14C (x86)" }
+          $fs  = [System.IO.File]::OpenRead($asi)
+          $br  = New-Object System.IO.BinaryReader($fs)
+          try {
+            # 1) DOS header: "MZ" at offset 0
+            $fs.Seek(0, 'Begin') | Out-Null
+            if ($br.ReadUInt16() -ne 0x5A4D) { throw "not a PE file (missing MZ)" }
+
+            # 2) e_lfanew at 0x3C -> offset of PE header
+            $fs.Seek(0x3C, 'Begin') | Out-Null
+            $peOff = $br.ReadInt32()
+
+            # 3) PE signature "PE\0\0" (0x00004550) at e_lfanew
+            $fs.Seek($peOff, 'Begin') | Out-Null
+            if ($br.ReadUInt32() -ne 0x00004550) { throw "not a PE file (missing PE signature)" }
+
+            # 4) Machine right after the PE signature (e_lfanew + 4)
+            $machine = $br.ReadUInt16()
+          }
+          finally {
+            $fs.Close()
+          }
+
+          if ($machine -ne 0x14C) {
+            throw "unexpected machine type 0x$($machine.ToString('X')) - expected 0x14C (x86)"
+          }
           Write-Host "OK: $((Get-Item $asi).Length) bytes, PE32 x86"
 
       - name: Assemble package (miles/1_kej.asi + 1_kej/images)
