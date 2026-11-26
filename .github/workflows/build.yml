@@ -88,30 +88,3 @@ jobs:
           name: 1_kej-Release-x86
           path: package/
           if-no-files-found: error
-
-      - name: Create release archive
-        shell: pwsh
-        run: Compress-Archive "package\*" "1_kej-Release-x86.zip"
-
-      - name: Upload release archive
-        uses: actions/upload-artifact@v4
-        with:
-          name: 1_kej-Release-x86-zip
-          path: 1_kej-Release-x86.zip
-
-  release:
-    if: startsWith(github.ref, 'refs/tags/v')
-    needs: build
-    runs-on: windows-latest
-    permissions:
-      contents: write
-    steps:
-      - name: Download package
-        uses: actions/download-artifact@v4
-        with:
-          name: 1_kej-Release-x86-zip
-
-      - name: Publish GitHub release
-        uses: softprops/action-gh-release@v2
-        with:
-          files: 1_kej-Release-x86.zip
