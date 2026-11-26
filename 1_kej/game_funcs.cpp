@@ -107,17 +107,17 @@ void OpenMenu_f()
     }
     VectorCopy(clients->cgameViewangles, r::angles_before_menu);
     r::R_RemoveInput(r::should_draw_menu);
-
-    hook* a = nullptr;
-
-   
 }
 void Cmd_Init()
 {
     std::cout << "calling Cmd_Init()\n";
     Com_Printf(CON_CHANNEL_CONSOLEONLY, "loading custom cmd functions\n");
-    Cmd_AddCommand((char*)"1_kej_openmenu", OpenMenu_f);
 
+    // NOTE: "1_kej_openmenu" console command intentionally NOT registered.
+    // The menu is opened by pressing DELETE (see r::WndProc in r_init.cpp),
+    // which calls OpenMenu_f() directly. If you ever need the command back,
+    // just uncomment the line below.
+    // Cmd_AddCommand((char*)"1_kej_openmenu", OpenMenu_f);
 }
 void Cbuf_AddText(const char* text, int localClientNum)
 {
