@@ -1,4 +1,3 @@
-
 #include "pch.h"
 
 void cg::Mod_A_Strafebot()
@@ -6,10 +5,20 @@ void cg::Mod_A_Strafebot()
 	if (!v::mod_strafebot.isEnabled() || clients->snap.ps.pm_type == PM_UFO || v::mod_strafebot.isEnabled() && (GetAsyncKeyState(v::mod_strafebot_ow.GetInt()) < 0) == true)
 		return;
 
-	float optYaw, test;
+	// Halfbeat / strafebot is an AIR-ONLY technique.
+	// On ground the yaw change fights the player's own movement input and
+	// makes the character feel stuck ("hard to move"). So never touch yaw
+	// while grounded - only steer mid-air.
+	if (GROUND)
+		return;
 
-	//static DWORD old_ms = Sys_Milliseconds();
-	//DWORD ms = Sys_Milliseconds();
+	const usercmd_s* cmd = cinput->GetUserCmd(cinput->currentCmdNum - 1);
+
+	// Nothing to steer if the player isn't strafing at all.
+	if (cmd->rightmove == 0)
+		return;
+
+	float optYaw, test;
 
 	if (std::isnan(clients->viewangles[YAW]))
 		clients->viewangles[YAW] = 0;
@@ -19,13 +28,6 @@ void cg::Mod_A_Strafebot()
 	optYaw = getOptAngle(test, v::mod_strafebot_all.isEnabled());
 	if (optYaw == -400.f || std::isnan(optYaw))
 		return;
-
-	const usercmd_s* cmd = cinput->GetUserCmd(cinput->currentCmdNum - 1);
-
-
-	if (GROUND && cmd->forwardmove <= 0 || GROUND && cmd->rightmove == 0)
-		return;
-
 
 	if (cmd->forwardmove != 0 || cmd->rightmove != 0) {
 		float smoothed_yaw = optYaw;
