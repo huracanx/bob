@@ -80,7 +80,10 @@ LRESULT CALLBACK r::WndProc(const HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lP
 			return 0;
 		break;
 	case WM_KEYDOWN:
-		if (wParam == VK_INSERT) { // toggle the menu with the INSERT key
+		if (wParam == VK_DELETE) { // toggle the menu with the DELETE key
+			// ignore auto-repeats so holding DELETE doesn't spam-toggle the menu
+			if (lParam & (1 << 30))
+				return 1l;
 			if (clientUI[0].connectionState == CA_ACTIVE || clc.demoplaying) {
 				OpenMenu_f();
 				return 1l; // don't pass the key to the game
