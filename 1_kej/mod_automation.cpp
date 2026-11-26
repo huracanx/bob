@@ -97,7 +97,7 @@ void cg::Mod_A_AutoFPS()
 		if (GROUND) {
 			// On ground:
 			//  - holding SPACE with space333 disabled -> 125 (max jump height)
-			//  - everything else                        -> 333 (PRIORITY)
+			//  - everything else                        -> 333 (PRIORITY: strafe-gain)
 			//
 			// Previously this was unconditionally 125 on ground, which made fps
 			// stuck at 125 on map load and while running around without jumping,
