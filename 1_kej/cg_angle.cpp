@@ -181,7 +181,11 @@ float cg::R_getOptAngle(const bool rightmove, float& diff)
 
 	float yaw = ps_loc->viewangles[YAW];
 	float g_speed = (float)cgs->snap->ps.speed;
-	const float FPS = (float)Dvar_FindMalleableVar("com_maxfps")->current.integer;
+	dvar_s* fpsDvar = Dvar_FindMalleableVar("com_maxfps");
+	const float FPS = fpsDvar ? (float)fpsDvar->current.integer : 125.0f;
+
+	if (g_speed <= 0.0f || FPS <= 0.0f)
+		return -400.0f;
 
 	float accel = FPS / g_speed;
 
@@ -192,7 +196,9 @@ float cg::R_getOptAngle(const bool rightmove, float& diff)
 
 	const double velocitydirection = atan2(clients->cgameVelocity[1], clients->cgameVelocity[0]) * 180.f / PI;
 	const double accelerationAng = atan2(-(int)*sidemove, (int)*forwardmove) * 180.f / PI;
-	diff = acos((g_speed - accel) / _speed) * 180.f / PI;
+	double acosArg = (g_speed - accel) / _speed;
+	acosArg = acosArg < -1.0 ? -1.0 : (acosArg > 1.0 ? 1.0 : acosArg);
+	diff = (float)(acos(acosArg) * 180.0 / PI);
 	//const float minAngle = acos(g_speed / _speed) * 180.f / PI;
 
 	float delta = yaw;
@@ -231,9 +237,22 @@ float cg::getOptAngle(float& _opt, const bool all_techs)
 	else forwardmove = 127;
 
 
-	float yaw =clients->cgameViewangles[YAW];
-	float g_speed = (float)Dvar_FindMalleableVar("g_speed")->current.integer; //(float)clients->snap.ps.speed;
-	const float FPS = (float)Dvar_FindMalleableVar("com_maxfps")->current.integer;
+	float yaw = clients->cgameViewangles[YAW];
+
+	// These dvars may not be registered in the client on modded public servers.
+	// Fall back to the player's movement speed and a conventional FPS value.
+	dvar_s* speedDvar = Dvar_FindMalleableVar("g_speed");
+	dvar_s* fpsDvar = Dvar_FindMalleableVar("com_maxfps");
+
+	float g_speed = speedDvar
+		? (float)speedDvar->current.integer
+		: (float)clients->snap.ps.speed;
+	const float FPS = fpsDvar
+		? (float)fpsDvar->current.integer
+		: 125.0f;
+
+	if (g_speed <= 0.0f || FPS <= 0.0f || _speed <= 0.0f)
+		return -400.0f;
 
 	float accel = FPS / g_speed;
 
@@ -251,7 +270,9 @@ float cg::getOptAngle(float& _opt, const bool all_techs)
 
 	const double velocitydirection = atan2(clients->cgameVelocity[1], clients->cgameVelocity[0]) * 180.f / PI;
 	const double accelerationAng = atan2(-rightmove, forwardmove) * 180.f / PI;
-	double diff = acos((g_speed - accel) / _speed) * 180.f / PI;
+	double acosArg = (g_speed - accel) / _speed;
+	acosArg = acosArg < -1.0 ? -1.0 : (acosArg > 1.0 ? 1.0 : acosArg);
+	double diff = acos(acosArg) * 180.0 / PI;
 	//const float minAngle = acos(g_speed / _speed) * 180.f / PI;
 
 	//if (jumpanalyzer.recommendedFPS == 125)
@@ -294,7 +315,9 @@ float cg::getOptForAnalyzer(jump_data* data, bool onGround)
 
 	const float velocitydirection = atan2(data->velocity[1], data->velocity[0]) * 180.f / PI;
 	const float accelerationAng = atan2(-(int)data->rightmove, (int)data->forwardmove) * 180.f / PI;
-	float diff = acos((g_speed - accel) / _speed) * 180.f / PI;
+	float acosArg = (g_speed - accel) / _speed;
+	acosArg = acosArg < -1.0f ? -1.0f : (acosArg > 1.0f ? 1.0f : acosArg);
+	float diff = (float)(acos(acosArg) * 180.0 / PI);
 	//const float minAngle = acos(g_speed / _speed) * 180.f / PI;
 
 	//if (jumpanalyzer.recommendedFPS == 125)
