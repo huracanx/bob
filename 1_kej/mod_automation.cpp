@@ -1,3 +1,4 @@
+
 #include "pch.h"
 
 void cg::Mod_A_Strafebot()
@@ -5,31 +6,10 @@ void cg::Mod_A_Strafebot()
 	if (!v::mod_strafebot.isEnabled() || clients->snap.ps.pm_type == PM_UFO || v::mod_strafebot.isEnabled() && (GetAsyncKeyState(v::mod_strafebot_ow.GetInt()) < 0) == true)
 		return;
 
-	const usercmd_s* cmd = cinput->GetUserCmd(cinput->currentCmdNum - 1);
-
-	// Ничего не стрейфим, если нет стрейфа вообще.
-	if (cmd->rightmove == 0)
-		return;
-
-	// --- FULLBEAT на земле vs HALFBEAK в воздухе ---------------------------------
-	//
-	// halfbeat  = контр-стрейф, работает ТОЛЬКО в воздухе. На земле гасит
-	//             скорость и "залипает" -> на земле его быть не должно.
-	// fullbeat  = WA/WD, работает и на земле, и в воздухе. Включается
-	//             evar'ом mod_strafebot_all (он же второй аргумент getOptAngle).
-	//
-	// Поэтому на земле:
-	//   - если fullbeat выключен           -> выход (halfbeat на земле не нужен)
-	//   - если forwardmove <= 0 (просто A/D) -> выход (это halfbeat-направление)
-	//   - иначе                            -> работает fullbeat (WA/WD)
-	if (GROUND) {
-		if (!v::mod_strafebot_all.isEnabled())
-			return;
-		if (cmd->forwardmove <= 0)
-			return;
-	}
-
 	float optYaw, test;
+
+	//static DWORD old_ms = Sys_Milliseconds();
+	//DWORD ms = Sys_Milliseconds();
 
 	if (std::isnan(clients->viewangles[YAW]))
 		clients->viewangles[YAW] = 0;
@@ -39,6 +19,13 @@ void cg::Mod_A_Strafebot()
 	optYaw = getOptAngle(test, v::mod_strafebot_all.isEnabled());
 	if (optYaw == -400.f || std::isnan(optYaw))
 		return;
+
+	const usercmd_s* cmd = cinput->GetUserCmd(cinput->currentCmdNum - 1);
+
+
+	if (GROUND && cmd->forwardmove <= 0 || GROUND && cmd->rightmove == 0)
+		return;
+
 
 	if (cmd->forwardmove != 0 || cmd->rightmove != 0) {
 		float smoothed_yaw = optYaw;
