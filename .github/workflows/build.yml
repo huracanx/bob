@@ -103,18 +103,20 @@ jobs:
           # Requires the DirectX End-User Runtime (June 2010) on the player's machine.
           # Download: https://www.microsoft.com/en-us/download/details.aspx?id=8109
 
-          # menu images live in resources\1_kej\images in the repo
-          if (Test-Path "resources\1_kej\images") {
-            Copy-Item "resources\1_kej\images\*" "package\1_kej\images\" -Recurse -Force
+          # user resources: everything from resources/ is dropped flat into
+          # package/1_kej/images/ (subfolders preserved if any)
+          if (Test-Path "resources") {
+            Copy-Item "resources\*" "package\1_kej\images\" -Recurse -Force
+            Write-Host "Copied resources/* -> package/1_kej/images/"
           } else {
-            Write-Warning "resources\1_kej\images not found - package\1_kej\images will be empty"
+            Write-Warning "resources/ not found - no menu images will be packaged"
           }
 
           # warn about missing menu images (mod refuses to load without them)
           $required = @("Automation","Error_no_load","Game","Home","Jump Builder","Jump Preview","Jumping","Map","Rpg","Settings_no_load","Visuals")
           foreach ($img in $required) {
             if (-not (Get-ChildItem "package\1_kej\images" -Filter "$img.*" -ErrorAction SilentlyContinue)) {
-              Write-Warning "missing menu image: 1_kej\images\$img.png (commit it under resources\1_kej\images\)"
+              Write-Warning "missing menu image: 1_kej\images\$img.png (commit it under resources\)"
             }
           }
 
