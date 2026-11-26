@@ -1,4 +1,3 @@
-
 #include "pch.h"
 
 void cg::Mod_A_Strafebot()
@@ -6,10 +5,26 @@ void cg::Mod_A_Strafebot()
 	if (!v::mod_strafebot.isEnabled() || clients->snap.ps.pm_type == PM_UFO || v::mod_strafebot.isEnabled() && (GetAsyncKeyState(v::mod_strafebot_ow.GetInt()) < 0) == true)
 		return;
 
-	float optYaw, test;
+	const usercmd_s* cmd = cinput->GetUserCmd(cinput->currentCmdNum - 1);
 
-	//static DWORD old_ms = Sys_Milliseconds();
-	//DWORD ms = Sys_Milliseconds();
+	// Ничего не стрейфим, если нет стрейфа вообще.
+	if (cmd->rightmove == 0)
+		return;
+
+	// --- FULLBEAT на земле vs HALFBEAK в воздухе ---------------------------------
+	//
+	// halfbeat  = контр-стрейф, работает ТОЛЬКО в воздухе. На земле гасит
+	//             скорость и "залипает" -> на земле его быть не должно.
+	// fullbeat  = WA/WD, работает и на земле, и в воздухе. Включается
+	//             evar'ом mod_strafebot_all (он же второй аргумент getOptAngle).
+	if (GROUND) {
+		if (!v::mod_strafebot_all.isEnabled())
+			return;
+		if (cmd->forwardmove <= 0)
+			return;
+	}
+
+	float optYaw, test;
 
 	if (std::isnan(clients->viewangles[YAW]))
 		clients->viewangles[YAW] = 0;
@@ -19,13 +34,6 @@ void cg::Mod_A_Strafebot()
 	optYaw = getOptAngle(test, v::mod_strafebot_all.isEnabled());
 	if (optYaw == -400.f || std::isnan(optYaw))
 		return;
-
-	const usercmd_s* cmd = cinput->GetUserCmd(cinput->currentCmdNum - 1);
-
-
-	if (GROUND && cmd->forwardmove <= 0 || GROUND && cmd->rightmove == 0)
-		return;
-
 
 	if (cmd->forwardmove != 0 || cmd->rightmove != 0) {
 		float smoothed_yaw = optYaw;
@@ -51,64 +59,65 @@ void cg::Mod_A_Strafebot()
 }
 void cg::Mod_A_AutoFPS()
 {
-
 	if (!v::mod_autoFPS.isEnabled() && !box500.boxExists && v::mod_autoFPS_hug500.GetInt() == 0)
 		return;
-	
 
+	if (jumpanalyzer.recommendedFPS == NULL || analyzer.isPreviewing() || !VID_ACTIVE || jbuilder.isGeneratingMovement())
+		return;
 
-	if (jumpanalyzer.recommendedFPS != NULL && !analyzer.isPreviewing() && VID_ACTIVE && !jbuilder.isGeneratingMovement())
-	{
-		dvar_s* com_maxfps = Dvar_FindMalleableVar("com_maxfps");
+	dvar_s* com_maxfps = Dvar_FindMalleableVar("com_maxfps");
+	if (!com_maxfps)
+		return;
 
-		bool const spaceHeld = (GetAsyncKeyState(VK_SPACE) < 0) == true;
+	bool const spaceHeld = (GetAsyncKeyState(VK_SPACE) < 0) == true;
 
-		int fps = jumpanalyzer.recommendedFPS;
+	int fps = jumpanalyzer.recommendedFPS;
 
-		if (!v::mod_autoFPS.isEnabled())
-			fps = com_maxfps->current.integer;
+	if (!v::mod_autoFPS.isEnabled())
+		fps = com_maxfps->current.integer;
 
-		if (v::mod_autoFPS_hug500.GetInt() > 0 && jumpanalyzer.hugging_bounce && !jumpanalyzer.walking && !spaceHeld) {
-
-			switch (v::mod_autoFPS_hug500.GetInt()) {
-			case 1:
-				fps = 333;
-				break;
-			case 2:
-				fps = 500;
-				break;
-			case 3:
-				fps = 1000;
-				break;
-			default:
-				break;
-			}
+	// hug500 - bounce hugging needs higher fps
+	// (applies regardless of autoFPS state - specific bounce technique)
+	if (v::mod_autoFPS_hug500.GetInt() > 0 && jumpanalyzer.hugging_bounce && !jumpanalyzer.walking && !spaceHeld) {
+		switch (v::mod_autoFPS_hug500.GetInt()) {
+		case 1: fps = 333;  break;
+		case 2: fps = 500;  break;
+		case 3: fps = 1000; break;
+		default: break;
 		}
-
-		if (box500.use500) {
-			//r::R_AddCmdDrawTextWithEffects((char*)"500fps", "fonts/objectivefont", r::X(300), r::Y(300), v::mod_velometer.GetArray(3), v::mod_velometer.GetArray(3), 0.f, vec4_t{ 255,0,255,255 }, 3, v::mod_velometer_glow.evar->vecValue, 0, 0, 0, 500, 1000, 2000);
-
-			fps = 500;
-		}
-		
-
-		if (v::mod_autoFPS.isEnabled()) {
-			if (GROUND)
-				fps = 125;
-			else if (spaceHeld && v::mod_autoFPS_space333.isEnabled())
-				fps = 333;
-
-			//if (mod_fps.DistanceToTransferZone > 45 && jumpanalyzer.recommendedFPS == 250)
-			//	fps = 200;
-
-		}
-		
-		if(com_maxfps)
-			com_maxfps->current.integer = fps;
 	}
 
+	// box500 - highest priority. Overrides everything else when inside the zone.
+	if (box500.use500) {
+		fps = 500;
+	}
 
+	// autoFPS base logic
+	if (v::mod_autoFPS.isEnabled() && !box500.use500) {
+		if (GROUND) {
+			// On ground:
+			//  - holding SPACE with space333 disabled -> 125 (max jump height)
+			//  - everything else                        -> 333 (PRIORITY)
+			//
+			// Previously this was unconditionally 125 on ground, which made fps
+			// stuck at 125 on map load and while running around without jumping,
+			// and prevented the player from using 333 strafe-gain fps on ground.
+			if (spaceHeld && !v::mod_autoFPS_space333.isEnabled()) {
+				fps = 125;
+			} else {
+				fps = 333;
+			}
+		} else {
+			// In air:
+			//  - holding SPACE with space333 enabled -> 333 (bhop)
+			//  - otherwise                           -> recommendedFPS (velocity-based)
+			if (spaceHeld && v::mod_autoFPS_space333.isEnabled()) {
+				fps = 333;
+			}
+		}
+	}
 
+	com_maxfps->current.integer = fps;
 }
 void cg::Mod_A_AdjustRPG(pmove_t* pm, pml_t* pml)
 {
