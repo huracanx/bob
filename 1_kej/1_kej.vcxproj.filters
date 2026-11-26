@@ -1,0 +1,442 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="Source Files">
+      <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
+      <Extensions>cpp;c;cc;cxx;c++;cppm;ixx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
+    </Filter>
+    <Filter Include="Header Files">
+      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFB}</UniqueIdentifier>
+      <Extensions>h;hh;hpp;hxx;h++;hm;inl;inc;ipp;xsd</Extensions>
+    </Filter>
+    <Filter Include="Resource Files">
+      <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
+      <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
+    </Filter>
+    <Filter Include="Header Files\lib">
+      <UniqueIdentifier>{1a5537ae-b883-4fdc-baf3-2d3b7508dfe3}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\lib\detours">
+      <UniqueIdentifier>{aed28cca-dbcb-46b6-ac3a-4dc183f9b429}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\init">
+      <UniqueIdentifier>{7872e7d3-208c-4642-9d84-c11632ee0451}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\cg">
+      <UniqueIdentifier>{581c4f0a-4aa9-4529-aad0-1aba2f949888}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\cg">
+      <UniqueIdentifier>{84f44e9e-6f3e-4599-b930-9824e7ee9099}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\game">
+      <UniqueIdentifier>{2d34a24e-c992-40dc-afb5-b9a07a5f20dd}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\com">
+      <UniqueIdentifier>{af94f49e-1efe-49cb-b9bd-b4a7ab134c8c}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\scr">
+      <UniqueIdentifier>{f6c4ac48-bf2b-4792-b943-b82892f3ee2c}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\render">
+      <UniqueIdentifier>{4e78cf4a-91a1-4b95-8dd3-ff7a38736594}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\sys">
+      <UniqueIdentifier>{f6329534-da8d-4bfb-b8b3-c4e4fcfb39b2}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\lib\ImGui">
+      <UniqueIdentifier>{c407edd6-f666-44c9-bc5e-d71cfdbb31e5}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\mod">
+      <UniqueIdentifier>{e48b5ebd-7b5b-46e5-b4f5-9d56bf94c9a1}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\render\ui">
+      <UniqueIdentifier>{cc16bacb-0a9b-4d6c-bf48-14c5b1e48313}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\evar">
+      <UniqueIdentifier>{f95c71fc-cb7a-421a-9ba1-e1b2ce0f54e6}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\cl">
+      <UniqueIdentifier>{21c0fafd-c9d3-42dc-919c-d4f2ff9b14cd}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\sv">
+      <UniqueIdentifier>{6c1004da-e4d1-4895-b1b3-a8ee80db9225}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\evar\fs">
+      <UniqueIdentifier>{dca192b3-c283-4fa1-9bb1-fa55ffbab10f}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\shared">
+      <UniqueIdentifier>{decff074-e5e9-49eb-bbb3-dc09cfe30492}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\bg">
+      <UniqueIdentifier>{15ba53db-9e1d-4345-8108-5e1803a04f76}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\menu">
+      <UniqueIdentifier>{ad0e1ba6-cb49-4763-be6c-67b061c2513a}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\CMod">
+      <UniqueIdentifier>{c34691e5-8d60-491d-8fd9-19bbc254c500}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\lib\ImGradient">
+      <UniqueIdentifier>{eab82273-3385-47b3-98ad-ef0ade7c8b01}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\cm">
+      <UniqueIdentifier>{cd3be425-cb1b-48d5-acfe-2d61ac748953}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\RB">
+      <UniqueIdentifier>{b914f9ae-02e1-4143-b6af-8c1cd09b1976}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="framework.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="pch.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="detours\detours.h">
+      <Filter>Header Files\lib\detours</Filter>
+    </ClInclude>
+    <ClInclude Include="koukku.hpp">
+      <Filter>Header Files\lib</Filter>
+    </ClInclude>
+    <ClInclude Include="entry.hpp">
+      <Filter>Header Files\init</Filter>
+    </ClInclude>
+    <ClInclude Include="cg_init.hpp">
+      <Filter>Source Files\cg</Filter>
+    </ClInclude>
+    <ClInclude Include="cg_offsets.h">
+      <Filter>Header Files\cg</Filter>
+    </ClInclude>
+    <ClInclude Include="cg_local.h">
+      <Filter>Header Files\cg</Filter>
+    </ClInclude>
+    <ClInclude Include="dvar.hpp">
+      <Filter>Source Files\game</Filter>
+    </ClInclude>
+    <ClInclude Include="com_channel.h">
+      <Filter>Source Files\com</Filter>
+    </ClInclude>
+    <ClInclude Include="scr_cmd.hpp">
+      <Filter>Source Files\scr</Filter>
+    </ClInclude>
+    <ClInclude Include="scr_functions.hpp">
+      <Filter>Source Files\scr</Filter>
+    </ClInclude>
+    <ClInclude Include="scr_main.hpp">
+      <Filter>Source Files\scr</Filter>
+    </ClInclude>
+    <ClInclude Include="scr_obj.hpp">
+      <Filter>Source Files\scr</Filter>
+    </ClInclude>
+    <ClInclude Include="r_world.hpp">
+      <Filter>Source Files\render</Filter>
+    </ClInclude>
+    <ClInclude Include="r_init.hpp">
+      <Filter>Source Files\render</Filter>
+    </ClInclude>
+    <ClInclude Include="r_drawtools.hpp">
+      <Filter>Source Files\render</Filter>
+    </ClInclude>
+    <ClInclude Include="sys_tools.hpp">
+      <Filter>Source Files\sys</Filter>
+    </ClInclude>
+    <ClInclude Include="mod_vis.hpp">
+      <Filter>Source Files\mod</Filter>
+    </ClInclude>
+    <ClInclude Include="r_ui.hpp">
+      <Filter>Source Files\render\ui</Filter>
+    </ClInclude>
+    <ClInclude Include="game_funcs.hpp">
+      <Filter>Source Files\game</Filter>
+    </ClInclude>
+    <ClInclude Include="evar_config.h">
+      <Filter>Source Files\evar</Filter>
+    </ClInclude>
+    <ClInclude Include="evar.h">
+      <Filter>Source Files\evar</Filter>
+    </ClInclude>
+    <ClInclude Include="evars.h">
+      <Filter>Source Files\evar</Filter>
+    </ClInclude>
+    <ClInclude Include="mod_jumps.hpp">
+      <Filter>Source Files\mod</Filter>
+    </ClInclude>
+    <ClInclude Include="bg_pmove.hpp">
+      <Filter>Source Files\bg</Filter>
+    </ClInclude>
+    <ClInclude Include="g_trace.h">
+      <Filter>Source Files\game</Filter>
+    </ClInclude>
+    <ClInclude Include="cl_main.hpp">
+      <Filter>Source Files\cl</Filter>
+    </ClInclude>
+    <ClInclude Include="sv_ccmds.hpp">
+      <Filter>Source Files\sv</Filter>
+    </ClInclude>
+    <ClInclude Include="fs_log.hpp">
+      <Filter>Source Files\evar\fs</Filter>
+    </ClInclude>
+    <ClInclude Include="fs_funcs.h">
+      <Filter>Source Files\evar\fs</Filter>
+    </ClInclude>
+    <ClInclude Include="scr_menuresponse.hpp">
+      <Filter>Source Files\scr</Filter>
+    </ClInclude>
+    <ClInclude Include="q_math.hpp">
+      <Filter>Source Files\shared</Filter>
+    </ClInclude>
+    <ClInclude Include="cg_angle.hpp">
+      <Filter>Source Files\cg</Filter>
+    </ClInclude>
+    <ClInclude Include="bg_weapon.hpp">
+      <Filter>Source Files\bg</Filter>
+    </ClInclude>
+    <ClInclude Include="mod_analyzer.hpp">
+      <Filter>Source Files\mod</Filter>
+    </ClInclude>
+    <ClInclude Include="ImGui\imgui_impl_dx9.h">
+      <Filter>Header Files\lib\ImGui</Filter>
+    </ClInclude>
+    <ClInclude Include="ImGui\imgui_impl_win32.h">
+      <Filter>Header Files\lib\ImGui</Filter>
+    </ClInclude>
+    <ClInclude Include="ImGui\imgui_internal.h">
+      <Filter>Header Files\lib\ImGui</Filter>
+    </ClInclude>
+    <ClInclude Include="ImGui\imstb_rectpack.h">
+      <Filter>Header Files\lib\ImGui</Filter>
+    </ClInclude>
+    <ClInclude Include="ImGui\imstb_textedit.h">
+      <Filter>Header Files\lib\ImGui</Filter>
+    </ClInclude>
+    <ClInclude Include="ImGui\imstb_truetype.h">
+      <Filter>Header Files\lib\ImGui</Filter>
+    </ClInclude>
+    <ClInclude Include="ImGui\imconfig.h">
+      <Filter>Header Files\lib\ImGui</Filter>
+    </ClInclude>
+    <ClInclude Include="ImGui\imgui.h">
+      <Filter>Header Files\lib\ImGui</Filter>
+    </ClInclude>
+    <ClInclude Include="mod_automation.hpp">
+      <Filter>Source Files\mod</Filter>
+    </ClInclude>
+    <ClInclude Include="menu_items.hpp">
+      <Filter>Source Files\menu</Filter>
+    </ClInclude>
+    <ClInclude Include="cmod_data.hpp">
+      <Filter>Source Files\CMod</Filter>
+    </ClInclude>
+    <ClInclude Include="imgui_color_gradient.hpp">
+      <Filter>Header Files\lib\ImGradient</Filter>
+    </ClInclude>
+    <ClInclude Include="mod_jBuilder.hpp">
+      <Filter>Source Files\mod</Filter>
+    </ClInclude>
+    <ClInclude Include="r_ui_jbuilder.hpp">
+      <Filter>Source Files\render\ui</Filter>
+    </ClInclude>
+    <ClInclude Include="r_ui_assetmanager.hpp">
+      <Filter>Source Files\render\ui</Filter>
+    </ClInclude>
+    <ClInclude Include="u_key.h">
+      <Filter>Source Files\sys</Filter>
+    </ClInclude>
+    <ClInclude Include="cmod_export.hpp">
+      <Filter>Source Files\CMod</Filter>
+    </ClInclude>
+    <ClInclude Include="cm_brush.hpp">
+      <Filter>Source Files\cm</Filter>
+    </ClInclude>
+    <ClInclude Include="rb_endscene.hpp">
+      <Filter>Source Files\RB</Filter>
+    </ClInclude>
+    <ClInclude Include="rb_world.hpp">
+      <Filter>Source Files\RB</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="pch.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="koukku.cpp">
+      <Filter>Header Files\lib</Filter>
+    </ClCompile>
+    <ClCompile Include="entry.cpp">
+      <Filter>Header Files\init</Filter>
+    </ClCompile>
+    <ClCompile Include="cg_init.cpp">
+      <Filter>Source Files\cg</Filter>
+    </ClCompile>
+    <ClCompile Include="dvar.cpp">
+      <Filter>Source Files\game</Filter>
+    </ClCompile>
+    <ClCompile Include="com_channel.cpp">
+      <Filter>Source Files\com</Filter>
+    </ClCompile>
+    <ClCompile Include="scr_cmd.cpp">
+      <Filter>Source Files\scr</Filter>
+    </ClCompile>
+    <ClCompile Include="scr_functions.cpp">
+      <Filter>Source Files\scr</Filter>
+    </ClCompile>
+    <ClCompile Include="scr_main.cpp">
+      <Filter>Source Files\scr</Filter>
+    </ClCompile>
+    <ClCompile Include="scr_obj.cpp">
+      <Filter>Source Files\scr</Filter>
+    </ClCompile>
+    <ClCompile Include="r_world.cpp">
+      <Filter>Source Files\render</Filter>
+    </ClCompile>
+    <ClCompile Include="r_init.cpp">
+      <Filter>Source Files\render</Filter>
+    </ClCompile>
+    <ClCompile Include="r_main.cpp">
+      <Filter>Source Files\render</Filter>
+    </ClCompile>
+    <ClCompile Include="r_drawtools.cpp">
+      <Filter>Source Files\render</Filter>
+    </ClCompile>
+    <ClCompile Include="sys_tools.cpp">
+      <Filter>Source Files\sys</Filter>
+    </ClCompile>
+    <ClCompile Include="mod_vis.cpp">
+      <Filter>Source Files\mod</Filter>
+    </ClCompile>
+    <ClCompile Include="r_ui.cpp">
+      <Filter>Source Files\render\ui</Filter>
+    </ClCompile>
+    <ClCompile Include="game_funcs.cpp">
+      <Filter>Source Files\game</Filter>
+    </ClCompile>
+    <ClCompile Include="evar_config.cpp">
+      <Filter>Source Files\evar</Filter>
+    </ClCompile>
+    <ClCompile Include="evar.cpp">
+      <Filter>Source Files\evar</Filter>
+    </ClCompile>
+    <ClCompile Include="r_ui_features.cpp">
+      <Filter>Source Files\render\ui</Filter>
+    </ClCompile>
+    <ClCompile Include="mod_jumps.cpp">
+      <Filter>Source Files\mod</Filter>
+    </ClCompile>
+    <ClCompile Include="bg_pmove.cpp">
+      <Filter>Source Files\bg</Filter>
+    </ClCompile>
+    <ClCompile Include="g_trace.cpp">
+      <Filter>Source Files\game</Filter>
+    </ClCompile>
+    <ClCompile Include="cl_main.cpp">
+      <Filter>Source Files\cl</Filter>
+    </ClCompile>
+    <ClCompile Include="sv_ccmds.cpp">
+      <Filter>Source Files\sv</Filter>
+    </ClCompile>
+    <ClCompile Include="fs_log.cpp">
+      <Filter>Source Files\evar\fs</Filter>
+    </ClCompile>
+    <ClCompile Include="fs_funcs.cpp">
+      <Filter>Source Files\evar\fs</Filter>
+    </ClCompile>
+    <ClCompile Include="scr_menuresponse.cpp">
+      <Filter>Source Files\scr</Filter>
+    </ClCompile>
+    <ClCompile Include="q_math.cpp">
+      <Filter>Source Files\shared</Filter>
+    </ClCompile>
+    <ClCompile Include="cg_angle.cpp">
+      <Filter>Source Files\cg</Filter>
+    </ClCompile>
+    <ClCompile Include="cg_main.cpp">
+      <Filter>Source Files\cg</Filter>
+    </ClCompile>
+    <ClCompile Include="bg_weapon.cpp">
+      <Filter>Source Files\bg</Filter>
+    </ClCompile>
+    <ClCompile Include="mod_analyzer.cpp">
+      <Filter>Source Files\mod</Filter>
+    </ClCompile>
+    <ClCompile Include="r_ui_jumpanalyzer.cpp">
+      <Filter>Source Files\render\ui</Filter>
+    </ClCompile>
+    <ClCompile Include="mod_analyzer_io.cpp">
+      <Filter>Source Files\mod</Filter>
+    </ClCompile>
+    <ClCompile Include="ImGui\imgui_demo.cpp">
+      <Filter>Header Files\lib\ImGui</Filter>
+    </ClCompile>
+    <ClCompile Include="ImGui\imgui_draw.cpp">
+      <Filter>Header Files\lib\ImGui</Filter>
+    </ClCompile>
+    <ClCompile Include="ImGui\imgui_impl_dx9.cpp">
+      <Filter>Header Files\lib\ImGui</Filter>
+    </ClCompile>
+    <ClCompile Include="ImGui\imgui_impl_win32.cpp">
+      <Filter>Header Files\lib\ImGui</Filter>
+    </ClCompile>
+    <ClCompile Include="ImGui\imgui_tables.cpp">
+      <Filter>Header Files\lib\ImGui</Filter>
+    </ClCompile>
+    <ClCompile Include="ImGui\imgui_widgets.cpp">
+      <Filter>Header Files\lib\ImGui</Filter>
+    </ClCompile>
+    <ClCompile Include="ImGui\imgui.cpp">
+      <Filter>Header Files\lib\ImGui</Filter>
+    </ClCompile>
+    <ClCompile Include="mod_automation.cpp">
+      <Filter>Source Files\mod</Filter>
+    </ClCompile>
+    <ClCompile Include="r_ui_automation.cpp">
+      <Filter>Source Files\render\ui</Filter>
+    </ClCompile>
+    <ClCompile Include="menu_items.cpp">
+      <Filter>Source Files\menu</Filter>
+    </ClCompile>
+    <ClCompile Include="r_ui_menus.cpp">
+      <Filter>Source Files\render\ui</Filter>
+    </ClCompile>
+    <ClCompile Include="cmod_data.cpp">
+      <Filter>Source Files\CMod</Filter>
+    </ClCompile>
+    <ClCompile Include="imgui_color_gradient.cpp">
+      <Filter>Header Files\lib\ImGradient</Filter>
+    </ClCompile>
+    <ClCompile Include="mod_jBuilder.cpp">
+      <Filter>Source Files\mod</Filter>
+    </ClCompile>
+    <ClCompile Include="r_ui_jbuilder.cpp">
+      <Filter>Source Files\render\ui</Filter>
+    </ClCompile>
+    <ClCompile Include="r_ui_assetmanager.cpp">
+      <Filter>Source Files\render\ui</Filter>
+    </ClCompile>
+    <ClCompile Include="u_key.cpp">
+      <Filter>Source Files\sys</Filter>
+    </ClCompile>
+    <ClCompile Include="cmod_export.cpp">
+      <Filter>Source Files\CMod</Filter>
+    </ClCompile>
+    <ClCompile Include="cm_brush.cpp">
+      <Filter>Source Files\cm</Filter>
+    </ClCompile>
+    <ClCompile Include="rb_endscene.cpp">
+      <Filter>Source Files\RB</Filter>
+    </ClCompile>
+    <ClCompile Include="rb_world.cpp">
+      <Filter>Source Files\RB</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <Library Include="detours\detours.lib">
+      <Filter>Header Files\lib\detours</Filter>
+    </Library>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="cg_main.hpp">
+      <Filter>Source Files\cg</Filter>
+    </None>
+  </ItemGroup>
+</Project>
