@@ -19,8 +19,10 @@ void Script_OnMenuResponse(int serverId, int menu, const char* response)
 
     if ((team_marinesopfor) && (allies || axis || autoassign)) {
 
-        Cbuf_AddText(";wait; openscriptmenu changeclass specops_mp,0\n", cgs->clientNum);
-        Cbuf_AddText(";wait; openscriptmenu changeclass specops_mp,0\n", cgs->clientNum);
+        // auto class selection removed on purpose:
+        // previously the mod forced "openscriptmenu changeclass specops_mp,0"
+        // right after a team was picked, which overrode the player's own
+        // class/weapon choice. Do not reintroduce those calls here.
 
         if (cworld.terrain.clip_points.empty()) {
             CMod_GetAllTerrainClips();
