@@ -1,0 +1,117 @@
+name: Build 1_kej.asi
+
+on:
+  push:
+    branches: [master, main]
+  pull_request:
+    branches: [master, main]
+  workflow_dispatch:
+
+env:
+  D3DX_VERSION: 9.29.952.8
+  DXSDK_DIR: C:\DXSDK\
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Add MSBuild to PATH
+        uses: microsoft/setup-msbuild@v2
+
+      # The project links against legacy D3DX9 (d3dx9.lib). Instead of the
+      # huge June 2010 DirectX SDK installer, grab the official
+      # Microsoft.DXSDK.D3DX NuGet package and lay it out in the
+      # DXSDK-style folder tree the .vcxproj already expects.
+      - name: Prepare D3DX (legacy DirectX SDK files)
+        shell: pwsh
+        run: |
+          $url = "https://www.nuget.org/api/v2/package/Microsoft.DXSDK.D3DX/${{ env.D3DX_VERSION }}"
+          Invoke-WebRequest -Uri $url -OutFile "$env:TEMP\d3dx.zip"
+          Expand-Archive "$env:TEMP\d3dx.zip" -DestinationPath "$env:TEMP\d3dx_pkg" -Force
+
+          New-Item -ItemType Directory -Force -Path "${{ env.DXSDK_DIR }}Include", "${{ env.DXSDK_DIR }}Lib\x86" | Out-Null
+          Copy-Item "$env:TEMP\d3dx_pkg\build\native\include\*" "${{ env.DXSDK_DIR }}Include\" -Recurse -Force
+          Copy-Item "$env:TEMP\d3dx_pkg\build\native\release\lib\x86\*" "${{ env.DXSDK_DIR }}Lib\x86\" -Recurse -Force
+          Write-Host "D3DX headers + x86 import libraries prepared in ${{ env.DXSDK_DIR }}"
+
+      - name: Build (Release Win32)
+        run: msbuild 1_kej.sln /m /verbosity:minimal /p:Configuration=Release /p:Platform=x86
+
+      - name: Verify 1_kej.asi
+        shell: pwsh
+        run: |
+          $asi = "build\Release\1_kej.asi"
+          if (-not (Test-Path $asi)) { throw "build failed: $asi not found" }
+          # sanity check: must be a 32-bit (0x14C) PE DLL
+          $fs = [System.IO.File]::OpenRead((Resolve-Path $asi))
+          $br = New-Object System.IO.BinaryReader($fs)
+          $fs.Seek(0x3C, 'Begin') | Out-Null
+          $fs.Seek($br.ReadInt32(), 'Begin') | Out-Null
+          if ($br.ReadUInt16() -ne 0x5A4D) { throw "not a PE file" }
+          $fs.Seek(0x14, 'Current') | Out-Null
+          $machine = $br.ReadUInt16()
+          $fs.Close()
+          if ($machine -ne 0x14C) { throw "unexpected machine type 0x$($machine.ToString('X')) - expected 0x14C (x86)" }
+          Write-Host "OK: $((Get-Item $asi).Length) bytes, PE32 x86"
+
+      - name: Assemble package (.asi + resources)
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path "package\1_kej\images" | Out-Null
+
+          Copy-Item "build\Release\1_kej.asi" "package\"
+          # runtime dependency for players without the DirectX end-user runtime
+          Copy-Item "$env:TEMP\d3dx_pkg\build\native\release\bin\x86\D3DX9_43.dll" "package\"
+
+          # user resources: put menu images into resources\1_kej\images in the repo
+          if (Test-Path "resources") {
+            Copy-Item "resources\*" "package\" -Recurse -Force
+          }
+
+          # warn about missing menu images (mod refuses to load without them)
+          $required = @("Automation","Error_no_load","Game","Home","Jump Builder","Jump Preview","Jumping","Map","Rpg","Settings_no_load","Visuals")
+          foreach ($img in $required) {
+            if (-not (Get-ChildItem "package\1_kej\images" -Filter "$img.*" -ErrorAction SilentlyContinue)) {
+              Write-Warning "missing menu image: 1_kej\images\$img.png (commit it under resources\1_kej\images\)"
+            }
+          }
+
+          Get-ChildItem "package" -Recurse | Select-Object FullName, Length
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: 1_kej-Release-x86
+          path: package/
+          if-no-files-found: error
+
+      - name: Create release archive
+        shell: pwsh
+        run: Compress-Archive "package\*" "1_kej-Release-x86.zip"
+
+      - name: Upload release archive
+        uses: actions/upload-artifact@v4
+        with:
+          name: 1_kej-Release-x86-zip
+          path: 1_kej-Release-x86.zip
+
+  release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: build
+    runs-on: windows-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Download package
+        uses: actions/download-artifact@v4
+        with:
+          name: 1_kej-Release-x86-zip
+
+      - name: Publish GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: 1_kej-Release-x86.zip

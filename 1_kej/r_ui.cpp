@@ -89,20 +89,26 @@ void r::R_MenuStyle(float transparencyScale)
 }
 void r::IN_ActiveMouse(int active)
 {
+	const bool on = active != 0;
+
 	if (cod4x_entry) {
-		int returnVal;
-		const DWORD a = (cod4x_entry + 0x79918);
+		// let cod4x update its own input state too
+		const DWORD fnc = (cod4x_entry + 0x79918);
 		_asm {
 			push active;
-			call a;
+			call fnc;
 			add esp, 0x4;
-			mov returnVal, eax;
 		}
-		return;
 	}
-	s_wmv->mouseInitialized = active;
-	return;
 
+	// Always toggle both flags in iw3mp's own mouse state (works with and
+	// without cod4x). The per-frame cursor re-centering in the game's
+	// IN_MouseMove() is gated on mouseActive, so clearing only
+	// mouseInitialized left the game snapping the cursor back to the window
+	// centre every frame -> the cursor could not be moved and "jittered in
+	// place" while the menu was open.
+	s_wmv->mouseActive = on;
+	s_wmv->mouseInitialized = on;
 }
 void r::R_RemoveInput(bool _true, bool save_file)
 {
@@ -116,7 +122,11 @@ void r::R_RemoveInput(bool _true, bool save_file)
 	static const DWORD MouseInput = (cod4x_entry != NULL) ? (cg::cod4x_entry + 0x4480E01) : (DWORD)&s_wmv->mouseInitialized;
 	static const DWORD KeyInput = 0x4631B0; //CL_KeyMove
 	ImGuiIO& io = ImGui::GetIO();
-	hook* a = nullptr;
+
+	// write_addr()/nop() never touch instance state, but calling them through
+	// a null pointer is undefined behaviour and can be miscompiled
+	static hook h;
+	hook* a = &h;
 
 
 	if (_true) {
