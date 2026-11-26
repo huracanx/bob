@@ -118,19 +118,6 @@ void cg::Mod_A_AutoFPS()
 	}
 
 	com_maxfps->current.integer = fps;
-
-	// Publish AutoFPS through a separate CoD4x userinfo key.
-	// Do NOT use "com_maxfps" as the userinfo key: that is the engine's
-	// local FPS cvar and should only be changed by the AutoFPS logic above.
-	// The server-side scoreboard must read getuserinfo("fps").
-	static int lastReportedFPS = -1;
-	if (fps != lastReportedFPS)
-	{
-		char fpsUserinfoCommand[64]{};
-		sprintf_s(fpsUserinfoCommand, sizeof(fpsUserinfoCommand), "setu fps %d\\n", fps);
-		Cbuf_AddText(fpsUserinfoCommand, 0);
-		lastReportedFPS = fps;
-	}
 }
 void cg::Mod_A_AdjustRPG(pmove_t* pm, pml_t* pml)
 {
