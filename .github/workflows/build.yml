@@ -26,6 +26,10 @@ jobs:
       # huge June 2010 DirectX SDK installer, grab the official
       # Microsoft.DXSDK.D3DX NuGet package and lay it out in the
       # DXSDK-style folder tree the .vcxproj already expects.
+      #
+      # NOTE: only the *build-time* headers + import libs are needed here.
+      # The runtime D3DX9_43.dll is NOT shipped with the mod - players are
+      # expected to have the DirectX End-User Runtime (June 2010) installed.
       - name: Prepare D3DX (legacy DirectX SDK files)
         shell: pwsh
         run: |
@@ -95,8 +99,9 @@ jobs:
           # .asi goes into miles/
           Copy-Item $env:ASI_PATH "package\miles\1_kej.asi"
 
-          # runtime dependency for players without the DirectX end-user runtime
-          Copy-Item "$env:TEMP\d3dx_pkg\build\native\release\bin\x86\D3DX9_43.dll" "package\miles\"
+          # NOTE: D3DX9_43.dll is intentionally NOT shipped.
+          # Requires the DirectX End-User Runtime (June 2010) on the player's machine.
+          # Download: https://www.microsoft.com/en-us/download/details.aspx?id=8109
 
           # menu images live in resources\1_kej\images in the repo
           if (Test-Path "resources\1_kej\images") {
