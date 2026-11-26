@@ -1,5 +1,95 @@
 #include "pch.h"
 
+// ---------------------------------------------------------------------------
+// Cursor suppression while an ImGui menu is open.
+//
+// The game re-centres the OS cursor every frame (SetCursorPos to the window
+// centre) and clips it to a tiny centre rect (ClipCursor) for mouse-look.
+// That makes the ImGui cursor jitter in place instead of moving.
+//
+// We hook both WinAPI calls and, while a menu is open, drop the re-centre
+// and only clip to the game window bounds. Toggled from R_RemoveInput().
+// ---------------------------------------------------------------------------
+namespace
+{
+    using SetCursorPos_t = BOOL(WINAPI*)(int, int);
+    using ClipCursor_t   = BOOL(WINAPI*)(const RECT*);
+
+    SetCursorPos_t SetCursorPos_orig = nullptr;
+    ClipCursor_t   ClipCursor_orig   = nullptr;
+
+    // Set by R_RemoveInput(true) when the menu opens, cleared when it closes.
+    bool g_suppressCursorRecenters = false;
+
+    BOOL WINAPI SetCursorPos_hook(int X, int Y)
+    {
+        if (g_suppressCursorRecenters)
+            return TRUE;                 // pretend success, don't move
+
+        if (SetCursorPos_orig)
+            return SetCursorPos_orig(X, Y);
+
+        return TRUE;                     // defensive: should not happen
+    }
+
+    BOOL WINAPI ClipCursor_hook(const RECT* lpRect)
+    {
+        if (g_suppressCursorRecenters)
+        {
+            // keep the cursor inside the game window only; drop the small
+            // centre-rect clip the game uses for mouse-look
+            HWND hwnd = GetActiveWindow();
+            if (!hwnd)
+                hwnd = GetForegroundWindow();
+
+            if (hwnd)
+            {
+                RECT rc{};
+                if (GetClientRect(hwnd, &rc))
+                {
+                    POINT tl{ rc.left,  rc.top    };
+                    POINT br{ rc.right, rc.bottom };
+                    ClientToScreen(hwnd, &tl);
+                    ClientToScreen(hwnd, &br);
+                    RECT screenRc{ tl.x, tl.y, br.x, br.y };
+                    return ClipCursor_orig ? ClipCursor_orig(&screenRc)
+                                           : ClipCursor(&screenRc);
+                }
+            }
+
+            return ClipCursor_orig ? ClipCursor_orig(nullptr)
+                                   : ClipCursor(nullptr);
+        }
+
+        return ClipCursor_orig ? ClipCursor_orig(lpRect) : ClipCursor(lpRect);
+    }
+
+    void Cursor_InstallHooks()
+    {
+        static bool installed = false;
+        if (installed)
+            return;
+        installed = true;
+
+        if (DetourTransactionBegin() != NO_ERROR)
+            return;
+
+        DetourUpdateThread(GetCurrentThread());
+        SetCursorPos_orig = (SetCursorPos_t)SetCursorPos;
+        ClipCursor_orig   = (ClipCursor_t)ClipCursor;
+
+        DetourAttach((PVOID*)&SetCursorPos_orig, (PVOID)SetCursorPos_hook);
+        DetourAttach((PVOID*)&ClipCursor_orig,   (PVOID)ClipCursor_hook);
+
+        if (DetourTransactionCommit() != NO_ERROR)
+        {
+            fs::Log_Write(LOG_NONE, "failed to hook SetCursorPos/ClipCursor\n");
+            SetCursorPos_orig = nullptr;
+            ClipCursor_orig   = nullptr;
+        }
+    }
+} // namespace
+
 void r::R_MenuStyle(float transparencyScale)
 {
 	ImGuiStyle* style = &ImGui::GetStyle();
@@ -131,6 +221,14 @@ void r::R_RemoveInput(bool _true, bool save_file)
 
 	if (_true) {
 
+		// Cursor: stop the game from re-centering the OS cursor / clipping it
+		// to the tiny centre rect while the menu is open. Without this the
+		// ImGui cursor jitters in place and cannot be moved, no matter what
+		// we do to s_wmv->mouseActive / mouseInitialized.
+		Cursor_InstallHooks();
+		g_suppressCursorRecenters = true;
+		::ClipCursor(nullptr); // release any active clip immediately
+
 		io.MouseDrawCursor = true;
 		io.WantCaptureMouse = true;
 		
@@ -140,6 +238,8 @@ void r::R_RemoveInput(bool _true, bool save_file)
 		a->write_addr(0x467EB0, "\xC3", 1); //CL_KeyEvent
 		return;
 	}
+
+	g_suppressCursorRecenters = false;
 
 	io.MouseDrawCursor = false;
 	io.WantCaptureMouse = false; 
