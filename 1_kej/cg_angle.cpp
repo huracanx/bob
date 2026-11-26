@@ -219,81 +219,92 @@ float cg::R_getOptAngle(const bool rightmove, float& diff)
 }
 float cg::getOptAngle(float& _opt, const bool all_techs)
 {
-	//usercmd_s* cmd = cinput->GetUserCmd(cinput->currentCmdNum - 1);
+	// Compatibility wrapper for existing callers (e.g. jump analysis).
+	return getOptAngle(_opt, all_techs, (int)input->move, (int)input->strafe);
+}
 
-	char forwardmove = input->move;
-	char rightmove = input->strafe;
+float cg::getOptAngle(float& _opt, const bool all_techs, int forwardmoveInput, int rightmoveInput)
+{
+	const int forwardmove = forwardmoveInput;
+	const int rightmove = rightmoveInput;
 
+	const float _speed = glm::length(glm::vec2(
+		clients->cgameVelocity[0],
+		clients->cgameVelocity[1]));
 
-	float _speed = glm::length(glm::vec2(clients->cgameVelocity[1], clients->cgameVelocity[0]));
+	if (!std::isfinite(_speed) || _speed < 1.0f)
+		return -400.0f;
 
-	if (_speed < 1 || _speed < clients->snap.ps.speed && NOT_GROUND || !all_techs && forwardmove != 127 && rightmove != 0 || analyzer.isSegmenting() && !analyzer.segmenterData.isReady)
-		return -400.0;
+	// Default mode is deliberately limited to WA / WD:
+	// forward must be held and one lateral direction must be active.
+	if (!all_techs && (forwardmove <= 0 || rightmove == 0))
+		return -400.0f;
 
-	
+	if (analyzer.isSegmenting() && !analyzer.segmenterData.isReady)
+		return -400.0f;
 
-	if (all_techs)
-		forwardmove = input->move;
-	else forwardmove = 127;
+	const float yaw = clients->cgameViewangles[YAW];
 
-
-	float yaw = clients->cgameViewangles[YAW];
-
-	// These dvars may not be registered in the client on modded public servers.
-	// Fall back to the player's movement speed and a conventional FPS value.
+	// On some modded servers these client-side Dvars are not registered.
 	dvar_s* speedDvar = Dvar_FindMalleableVar("g_speed");
 	dvar_s* fpsDvar = Dvar_FindMalleableVar("com_maxfps");
 
 	float g_speed = speedDvar
 		? (float)speedDvar->current.integer
 		: (float)clients->snap.ps.speed;
+
 	const float FPS = fpsDvar
 		? (float)fpsDvar->current.integer
 		: 125.0f;
 
-	if (g_speed <= 0.0f || FPS <= 0.0f || _speed <= 0.0f)
+	if (!std::isfinite(g_speed) || !std::isfinite(FPS) ||
+		g_speed <= 0.0f || FPS <= 0.0f)
+		return -400.0f;
+
+	// Engine Acceleration allows the bot to help build speed below g_speed.
+	// When disabled, preserve the legacy threshold in the air.
+	if (!v::mod_strafebot_accel.isEnabled() &&
+		_speed < (float)clients->snap.ps.speed && NOT_GROUND)
 		return -400.0f;
 
 	float accel = FPS / g_speed;
 
-	//float accel = g_speed * jumpanalyzer.frametime;
-
 	if (jumpanalyzer.recommendedFPS == 125 && NOT_GROUND)
 		accel = g_speed / FPS;
 
-	//float r = sqrtf();
-
-	if (_speed < 190)
-		g_speed = 190.f - (190.f - _speed);
+	if (_speed < 190.0f)
+		g_speed = _speed;
 	else if (GROUND)
-		g_speed = 277.f;
+		g_speed = 277.0f;
 
-	const double velocitydirection = atan2(clients->cgameVelocity[1], clients->cgameVelocity[0]) * 180.f / PI;
-	const double accelerationAng = atan2(-rightmove, forwardmove) * 180.f / PI;
-	double acosArg = (g_speed - accel) / _speed;
-	acosArg = acosArg < -1.0 ? -1.0 : (acosArg > 1.0 ? 1.0 : acosArg);
-	double diff = acos(acosArg) * 180.0 / PI;
-	//const float minAngle = acos(g_speed / _speed) * 180.f / PI;
+	const double velocitydirection =
+		atan2((double)clients->cgameVelocity[1],
+			  (double)clients->cgameVelocity[0]) * 180.0 / PI;
 
-	//if (jumpanalyzer.recommendedFPS == 125)
-	//	diff += accel; 
+	const double accelerationAng =
+		atan2(-(double)rightmove, (double)forwardmove) * 180.0 / PI;
 
-	float delta = yaw;
+	double acosArg = ((double)g_speed - (double)accel) / (double)_speed;
+	acosArg = std::max(-1.0, std::min(1.0, acosArg));
 
+	const double diff = acos(acosArg) * 180.0 / PI;
+	if (!std::isfinite(velocitydirection) || !std::isfinite(accelerationAng) ||
+		!std::isfinite(diff))
+		return -400.0f;
 
-	if (rightmove > 0 || WE && all_techs || SE && all_techs) {
-		delta = (velocitydirection - diff - accelerationAng);
-		_opt = delta - yaw;
-	}
-	else if (rightmove < 0 || WQ && all_techs || SQ && all_techs) {
-		delta = (velocitydirection + diff - accelerationAng);
-		_opt = delta - yaw;
-	}
-	yaw = delta;
+	double targetYaw = yaw;
 
-	
+	// rightmove > 0 is D / WD; rightmove < 0 is A / WA.
+	if (rightmove > 0)
+		targetYaw = velocitydirection - diff - accelerationAng;
+	else if (rightmove < 0)
+		targetYaw = velocitydirection + diff - accelerationAng;
+	else
+		return -400.0f;
 
-	return yaw;
+	// Keep the delta small and well-defined across the +/-180 degree seam.
+	_opt = AngleNormalize180((float)(targetYaw - yaw));
+	return AngleNormalize180((float)targetYaw);
 }
 float cg::getOptForAnalyzer(jump_data* data, bool onGround)
 {

@@ -6,23 +6,18 @@ void cg::Mod_A_Strafebot()
 		return;
 
 	const usercmd_s* cmd = cinput->GetUserCmd(cinput->currentCmdNum - 1);
+	if (!cmd)
+		return;
 
 	// Ничего не стрейфим, если нет стрейфа вообще.
 	if (cmd->rightmove == 0)
 		return;
 
-	// --- FULLBEAT на земле vs HALFBEAK в воздухе ---------------------------------
-	//
-	// halfbeat  = контр-стрейф, работает ТОЛЬКО в воздухе. На земле гасит
-	//             скорость и "залипает" -> на земле его быть не должно.
-	// fullbeat  = WA/WD, работает и на земле, и в воздухе. Включается
-	//             evar'ом mod_strafebot_all (он же второй аргумент getOptAngle).
-	if (GROUND) {
-		if (!v::mod_strafebot_all.isEnabled())
-			return;
-		if (cmd->forwardmove <= 0)
-			return;
-	}
+	// Default mode handles WA / WD on both ground and in air.
+	// "All techniques" expands the accepted movement combinations.
+	const bool allTechs = v::mod_strafebot_all.isEnabled();
+	if (!allTechs && cmd->forwardmove <= 0)
+		return;
 
 	float optYaw, test;
 
@@ -31,7 +26,7 @@ void cg::Mod_A_Strafebot()
 	else if (clients->viewangles[YAW] > 3000 || clients->viewangles[YAW] < -3000)
 		clients->viewangles[YAW] = fmodf(clients->viewangles[YAW], 360);
 
-	optYaw = getOptAngle(test, v::mod_strafebot_all.isEnabled());
+	optYaw = getOptAngle(test, allTechs, (int)cmd->forwardmove, (int)cmd->rightmove);
 	if (optYaw == -400.f || std::isnan(optYaw))
 		return;
 
@@ -45,10 +40,10 @@ void cg::Mod_A_Strafebot()
 		if (NOT_GROUND && v::mod_strafebot_smooth.GetFloat() != 1.f || (time_since_jumped > 0 && time_since_jumped < 300 || groundTime < 200) && v::mod_strafebot_bhop_s.GetFloat() != 1.f) {
 			const float dist2opt = DistanceToOpt(optYaw, clients->cgameViewangles[YAW]);
 			if (time_since_jumped < 400 && dist2opt > 1) {
-				CG_ApplySmoothing(clients->cgameViewangles[YAW], optYaw, v::mod_strafebot_bhop_s.GetFloat(), smoothed_yaw);
+				CG_ApplySmoothing(clients->cgameViewangles[YAW], optYaw, std::max(1.0f, v::mod_strafebot_bhop_s.GetFloat()), smoothed_yaw);
 			}
 			else if (dist2opt > 1 && dist2opt < 90)
-				CG_ApplySmoothing(clients->cgameViewangles[YAW], optYaw, v::mod_strafebot_smooth.GetFloat(), smoothed_yaw);
+				CG_ApplySmoothing(clients->cgameViewangles[YAW], optYaw, std::max(1.0f, v::mod_strafebot_smooth.GetFloat()), smoothed_yaw);
 			
 				
 		}
