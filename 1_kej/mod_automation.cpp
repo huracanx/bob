@@ -17,6 +17,11 @@ void cg::Mod_A_Strafebot()
 	//             скорость и "залипает" -> на земле его быть не должно.
 	// fullbeat  = WA/WD, работает и на земле, и в воздухе. Включается
 	//             evar'ом mod_strafebot_all (он же второй аргумент getOptAngle).
+	//
+	// Поэтому на земле:
+	//   - если fullbeat выключен           -> выход (halfbeat на земле не нужен)
+	//   - если forwardmove <= 0 (просто A/D) -> выход (это halfbeat-направление)
+	//   - иначе                            -> работает fullbeat (WA/WD)
 	if (GROUND) {
 		if (!v::mod_strafebot_all.isEnabled())
 			return;
@@ -59,65 +64,64 @@ void cg::Mod_A_Strafebot()
 }
 void cg::Mod_A_AutoFPS()
 {
+
 	if (!v::mod_autoFPS.isEnabled() && !box500.boxExists && v::mod_autoFPS_hug500.GetInt() == 0)
 		return;
+	
 
-	if (jumpanalyzer.recommendedFPS == NULL || analyzer.isPreviewing() || !VID_ACTIVE || jbuilder.isGeneratingMovement())
-		return;
 
-	dvar_s* com_maxfps = Dvar_FindMalleableVar("com_maxfps");
-	if (!com_maxfps)
-		return;
+	if (jumpanalyzer.recommendedFPS != NULL && !analyzer.isPreviewing() && VID_ACTIVE && !jbuilder.isGeneratingMovement())
+	{
+		dvar_s* com_maxfps = Dvar_FindMalleableVar("com_maxfps");
 
-	bool const spaceHeld = (GetAsyncKeyState(VK_SPACE) < 0) == true;
+		bool const spaceHeld = (GetAsyncKeyState(VK_SPACE) < 0) == true;
 
-	int fps = jumpanalyzer.recommendedFPS;
+		int fps = jumpanalyzer.recommendedFPS;
 
-	if (!v::mod_autoFPS.isEnabled())
-		fps = com_maxfps->current.integer;
+		if (!v::mod_autoFPS.isEnabled())
+			fps = com_maxfps->current.integer;
 
-	// hug500 - bounce hugging needs higher fps
-	// (applies regardless of autoFPS state - specific bounce technique)
-	if (v::mod_autoFPS_hug500.GetInt() > 0 && jumpanalyzer.hugging_bounce && !jumpanalyzer.walking && !spaceHeld) {
-		switch (v::mod_autoFPS_hug500.GetInt()) {
-		case 1: fps = 333;  break;
-		case 2: fps = 500;  break;
-		case 3: fps = 1000; break;
-		default: break;
+		if (v::mod_autoFPS_hug500.GetInt() > 0 && jumpanalyzer.hugging_bounce && !jumpanalyzer.walking && !spaceHeld) {
+
+			switch (v::mod_autoFPS_hug500.GetInt()) {
+			case 1:
+				fps = 333;
+				break;
+			case 2:
+				fps = 500;
+				break;
+			case 3:
+				fps = 1000;
+				break;
+			default:
+				break;
+			}
 		}
-	}
 
-	// box500 - highest priority. Overrides everything else when inside the zone.
-	if (box500.use500) {
-		fps = 500;
-	}
+		if (box500.use500) {
+			//r::R_AddCmdDrawTextWithEffects((char*)"500fps", "fonts/objectivefont", r::X(300), r::Y(300), v::mod_velometer.GetArray(3), v::mod_velometer.GetArray(3), 0.f, vec4_t{ 255,0,255,255 }, 3, v::mod_velometer_glow.evar->vecValue, 0, 0, 0, 500, 1000, 2000);
 
-	// autoFPS base logic
-	if (v::mod_autoFPS.isEnabled() && !box500.use500) {
-		if (GROUND) {
-			// On ground:
-			//  - holding SPACE with space333 disabled -> 125 (max jump height)
-			//  - everything else                        -> 333 (PRIORITY: strafe-gain)
-			//
-			// Previously this was unconditionally 125 on ground, which made fps
-			// stuck at 125 on map load and while running around without jumping,
-			// and prevented the player from using 333 strafe-gain fps on ground.
-			if (spaceHeld && !v::mod_autoFPS_space333.isEnabled()) {
+			fps = 500;
+		}
+		
+
+		if (v::mod_autoFPS.isEnabled()) {
+			if (GROUND)
 				fps = 125;
-			} else {
+			else if (spaceHeld && v::mod_autoFPS_space333.isEnabled())
 				fps = 333;
-			}
-		} else {
-			// In air:
-			//  - holding SPACE with space333 enabled -> 333 (bhop)
-			//  - otherwise                           -> recommendedFPS (velocity-based)
-			if (spaceHeld && v::mod_autoFPS_space333.isEnabled()) {
-				fps = 333;
-			}
+
+			//if (mod_fps.DistanceToTransferZone > 45 && jumpanalyzer.recommendedFPS == 250)
+			//	fps = 200;
+
 		}
+		
+		if(com_maxfps)
+			com_maxfps->current.integer = fps;
 	}
 
-	com_maxfps->current.integer = fps;
+
+
 }
 void cg::Mod_A_AdjustRPG(pmove_t* pm, pml_t* pml)
 {
