@@ -655,17 +655,17 @@ void r::R_Features()
 {
     static int active = 0;
     const char* pages[] = { "Automation", "Jumping", "Rpg", "Visuals", "Map", "Home" };
-    ImGui::BeginChild("##sidebar", ImVec2(160, 0), false, ImGuiWindowFlags_NoScrollbar);
+    ImGui::BeginChild("##sidebar", ImVec2(180, 0), false, ImGuiWindowFlags_NoScrollbar);
     ImDrawList* draw = ImGui::GetWindowDrawList();
     const ImVec2 origin = ImGui::GetWindowPos();
     const ImVec2 extent = ImGui::GetWindowSize();
     draw->AddRectFilled(origin, ImVec2(origin.x+extent.x,origin.y+extent.y), IM_COL32(32,32,32,255));
-    draw->AddLine(ImVec2(origin.x+159,origin.y),ImVec2(origin.x+159,origin.y+extent.y),IM_COL32(53,53,53,255));
-    ImGui::SetCursorPos(ImVec2(18,12));
+    draw->AddLine(ImVec2(origin.x+179,origin.y),ImVec2(origin.x+179,origin.y+extent.y),IM_COL32(53,53,53,255));
+    ImGui::SetCursorPos(ImVec2(24,14));
     ImGui::SetWindowFontScale(2.0f);
     ImGui::TextColored(ImVec4(.70f,.56f,.60f,1), "BOB");
     ImGui::SetWindowFontScale(1.0f);
-    ImGui::SetCursorPosY(78);
+    ImGui::SetCursorPosY(88);
     for (int i=0; i<6; ++i) {
         if (i==0 || i==3 || i==5) {
             ImGui::SetCursorPosX(12);
@@ -676,17 +676,25 @@ void r::R_Features()
         ImGui::PushStyleColor(ImGuiCol_Text, active==i ? IM_COL32(245,245,245,255) : IM_COL32(115,115,115,255));
         ImGui::PushStyleColor(ImGuiCol_Button, active==i ? IM_COL32(43,43,43,255) : IM_COL32(32,32,32,255));
         ImGui::PushStyleVar(ImGuiStyleVar_ButtonTextAlign, ImVec2(0.22f,0.5f));
-        if (ImGui::Button(pages[i], ImVec2(135,30))) active=i;
+        if (ImGui::Button(pages[i], ImVec2(155,32))) active=i;
         ImGui::PopStyleVar(); ImGui::PopStyleColor(2);
         const ImVec2 a=ImGui::GetItemRectMin(), b=ImGui::GetItemRectMax();
         const ImU32 ink=active==i?IM_COL32(180,145,155,255):IM_COL32(94,94,94,255);
-        draw->AddCircle(ImVec2(a.x+13,(a.y+b.y)*0.5f),4,ink,12,1.5f);
+        const ImVec2 c(a.x+15,(a.y+b.y)*0.5f);
+        switch (i) {
+        case 0: draw->AddLine(ImVec2(c.x-5,c.y+3),ImVec2(c.x+5,c.y-3),ink,2); draw->AddLine(ImVec2(c.x+1,c.y-3),ImVec2(c.x+5,c.y-3),ink,2); break;
+        case 1: draw->AddTriangleFilled(ImVec2(c.x,c.y-5),ImVec2(c.x-5,c.y+4),ImVec2(c.x+5,c.y+4),ink); break;
+        case 2: draw->AddLine(ImVec2(c.x-5,c.y+5),ImVec2(c.x+5,c.y-5),ink,3); break;
+        case 3: draw->AddCircle(c,5,ink,16,1.5f); draw->AddCircleFilled(c,2,ink); break;
+        case 4: draw->AddRect(ImVec2(c.x-5,c.y-5),ImVec2(c.x+5,c.y+5),ink,1,0,1.5f); break;
+        default: draw->AddRectFilled(ImVec2(c.x-4,c.y-5),ImVec2(c.x+4,c.y+5),ink,1); break;
+        }
         if (active==i) draw->AddRectFilled(ImVec2(a.x,a.y+5), ImVec2(a.x+2,b.y-5), ink,1);
         ImGui::PopID();
     }
     if (ImGui::GetContentRegionAvail().y > 44) {
         ImGui::SetCursorPos(ImVec2(9,extent.y-45));
-        ImGui::BeginChild("##build_badge",ImVec2(142,36),true,ImGuiWindowFlags_NoScrollbar);
+        ImGui::BeginChild("##build_badge",ImVec2(162,36),true,ImGuiWindowFlags_NoScrollbar);
         ImGui::TextColored(ImVec4(.70f,.56f,.60f,1), "BOB  /  TEST");
         ImGui::EndChild();
     }

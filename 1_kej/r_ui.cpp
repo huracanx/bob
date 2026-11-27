@@ -220,12 +220,14 @@ bool r::R_OpenMenu(IDirect3DDevice9* pDevice)
 		
         R_MenuStyle();
         const ImGuiViewport* viewport = ImGui::GetMainViewport();
-        const ImVec2 fixedSize((viewport->Size.x * 0.92f < 838.0f ? viewport->Size.x * 0.92f : 838.0f),
-                               (viewport->Size.y * 0.90f < 535.0f ? viewport->Size.y * 0.90f : 535.0f));
-        ImGui::SetNextWindowSize(fixedSize, ImGuiCond_Always);
+        const ImVec2 fixedSize((viewport->Size.x * 0.92f < 960.0f ? viewport->Size.x * 0.92f : 960.0f),
+                               (viewport->Size.y * 0.90f < 620.0f ? viewport->Size.y * 0.90f : 620.0f));
+        ImGui::GetIO().ConfigWindowsResizeFromEdges = true;
+        ImGui::SetNextWindowSize(fixedSize, ImGuiCond_FirstUseEver);
+        ImGui::SetNextWindowSizeConstraints(ImVec2(600, 380), viewport->Size);
         ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0,0));
         ImGui::Begin("[ALPHA] 1_kej_v2 - github.com/kejjjjj/", &r::should_draw_menu,
-                     ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoTitleBar);
+                     ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoTitleBar);
         ImGui::PopStyleVar();
         ImGui::SetWindowFontScale(1.0f);
         if (r::should_draw_menu) R_Features();

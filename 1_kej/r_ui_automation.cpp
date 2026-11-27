@@ -24,11 +24,12 @@ void r::R_Automation_Features()
     static bool editOverwrite=false, editSlide=false;
     if (ImGui::BeginTable("##automation_columns", 2, ImGuiTableFlags_SizingStretchSame)) {
         ImGui::TableNextColumn();
-        BeginPanel("##strafe_card", "Strafing", 310);
+        BeginPanel("##strafe_card", "Strafing", 340);
         Toggle("Strafebot", v::mod_strafebot);
-        Toggle("Auto Para (air, W)", v::mod_auto_para);
-        Toggle("Auto 250 switch (W)", v::mod_auto_250);
-        ImGui::TextDisabled("%s | Switches: %u", automation.paraActive ? (automation.paraSide > 0 ? "Auto right" : "Auto left") : "Manual / idle", automation.auto250Switches);
+        Toggle("Auto Para", v::mod_auto_para);
+        Toggle("Auto 250 Switch", v::mod_auto_250);
+        Toggle("Halfbeat", v::mod_halfbeat);
+        ImGui::TextDisabled("%s | 250 entries: %u", automation.paraActive ? (automation.paraSide > 0 ? "Auto right" : "Auto left") : "Manual / idle", automation.auto250Switches);
         Toggle("All techniques", v::mod_strafebot_all);
         Toggle("Engine acceleration", v::mod_strafebot_accel);
         ImGui::SetNextItemWidth(105); ImGui::DragFloat("Smoothing", &v::mod_strafebot_smooth.evar->floatValue, .5f,1,45,"%.2f");

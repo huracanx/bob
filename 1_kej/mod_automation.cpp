@@ -20,33 +20,23 @@ void cg::Mod_A_Strafebot()
     if (!cmd) return;
     // Live movement input is used for air WA/WD; ground keeps its existing path.
     const char forward = input->move;
-    const char sideMove = input->strafe;
-    // W-only modes are airborne only. Explicit A/D always wins.
-    const bool manual = sideMove != 0 || GetAsyncKeyState('A') < 0 || GetAsyncKeyState('D') < 0;
+    const bool leftHeld = GetAsyncKeyState('A') < 0;
+    const bool rightHeld = GetAsyncKeyState('D') < 0;
     const bool airborne = NOT_GROUND && !jumpanalyzer.walking;
-    const bool para = airborne && forward > 0 && !manual &&
-        (v::mod_auto_para.isEnabled() || v::mod_auto_250.isEnabled());
-    if (sideMove) automation.paraSide = sideMove > 0 ? 1 : -1;
+    const bool wOnly = airborne && forward > 0 && !leftHeld && !rightHeld && input->strafe == 0;
+    const char sideMove = leftHeld != rightHeld ? (rightHeld ? 127 : -127) : input->strafe;
+    if (sideMove != 0) automation.paraSide = sideMove > 0 ? 1 : -1;
     static bool was250 = false;
-    static DWORD last250Switch = 0;
-    const DWORD switchNow = Sys_MilliSeconds();
-    automation.paraActive = para;
-    const bool auto250 = para && v::mod_auto_250.isEnabled() && v::mod_autoFPS.isEnabled() &&
+    const bool auto250 = wOnly && v::mod_auto_250.isEnabled() && v::mod_autoFPS.isEnabled() &&
         v::mod_fps_override.GetInt() == 0;
-    if (!auto250) { was250 = false; last250Switch = 0; }
-    else {
-        const int zone = Mod_RecommendedFPS(AngleNormalize180(clients->cgameViewangles[YAW]), forward, 0);
-        const auto* currentFPS = Dvar_FindMalleableVar("com_maxfps");
-        const bool in250 = zone == 250 || (currentFPS && currentFPS->current.integer == 250);
-        if (in250 && !was250 && (!last250Switch || switchNow - last250Switch >= 100)) {
-            automation.paraSide = -automation.paraSide;
-            last250Switch = switchNow;
-            ++automation.auto250Switches;
-            was250 = true;
-        } else if (!in250 && (!last250Switch || switchNow - last250Switch >= 100)) {
-            was250 = false;
-        }
-    }
+    const int zone = auto250 ? Mod_RecommendedFPS(AngleNormalize180(clients->cgameViewangles[YAW]), forward, 0) : 0;
+    const bool in250 = auto250 && zone == 250;
+    if (in250 && !was250) ++automation.auto250Switches;
+    was250 = in250;
+    // Retain the last manually chosen direction; entering a zone must not reverse it.
+    const bool para = wOnly && (v::mod_auto_para.isEnabled() || auto250);
+    automation.paraActive = para;
+    const bool halfbeat = airborne && v::mod_halfbeat.isEnabled() && sideMove != 0 && forward == 0;
 
     // WA/WD is the basic ground mode. It must not depend on the separate
     // "All Techniques" option; that option remains relevant to other patterns.
@@ -65,7 +55,7 @@ void cg::Mod_A_Strafebot()
 	else if (clients->viewangles[YAW] > 3000 || clients->viewangles[YAW] < -3000)
 		clients->viewangles[YAW] = fmodf(clients->viewangles[YAW], 360);
 
-	optYaw = getOptAngle(test, v::mod_strafebot_all.isEnabled(), forward, sideMove);
+	optYaw = getOptAngle(test, v::mod_strafebot_all.isEnabled() || halfbeat, forward, sideMove);
 	if (optYaw == -400.f || !std::isfinite(optYaw)) {
         resetGround();
         return;

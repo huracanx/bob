@@ -52,6 +52,7 @@ namespace v
 		mod_strafebot_smooth,
 		mod_strafebot_bhop_s,
 		mod_strafebot_accel,
+		mod_halfbeat,
 		mod_auto_para,
 		mod_auto_250,
 		mod_fps_override,
