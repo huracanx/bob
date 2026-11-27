@@ -243,6 +243,36 @@ float cg::getOptAngle(float& _opt, const bool all_techs, const char forwardmoveI
 
 	float yaw = clients->cgameViewangles[YAW];
 
+    if (GROUND) {
+        // Flat, ordinary ground: friction acts before acceleration.
+        // Use the actual physics step, not the render FPS divided by speed.
+        const float wishSpeed = static_cast<float>(clients->snap.ps.speed);
+        if (!std::isfinite(_speed) || wishSpeed <= 0.0f)
+            return -400.0f;
+
+        float dt = jumpanalyzer.frametime;
+        if (!std::isfinite(dt) || dt <= 0.0f || dt > 0.05f) {
+            dvar_s* fps = Dvar_FindMalleableVar("com_maxfps");
+            dt = 1.0f / (fps && fps->current.integer > 0 ? fps->current.integer : 333.0f);
+        }
+        dt = glm::clamp(dt, 0.001f, 0.05f);
+        const float friction = 5.5f;
+        const float stopSpeed = 100.0f;
+        const float groundAccel = 9.0f;
+        const float control = _speed > stopSpeed ? _speed : stopSpeed;
+        const float afterFriction = glm::max(0.0f, _speed - control * friction * dt);
+        const float accelStep = groundAccel * wishSpeed * dt;
+        const float projection = glm::max(0.0f, wishSpeed - accelStep);
+        const float ratio = afterFriction > 0.0f
+            ? glm::clamp(projection / afterFriction, 0.0f, 1.0f) : 1.0f;
+        const float angle = acosf(ratio) * 180.0f / PI;
+        const float velocityYaw = atan2f(clients->cgameVelocity[1], clients->cgameVelocity[0]) * 180.0f / PI;
+        const float inputYaw = atan2f(-static_cast<float>(rightmove), static_cast<float>(forwardmove)) * 180.0f / PI;
+        const float target = velocityYaw + (rightmove > 0 ? -angle : angle) - inputYaw;
+        _opt = AngleNormalize180(target - yaw);
+        return yaw + _opt;
+    }
+
 	// These dvars may not be registered in the client on modded public servers.
 	// Fall back to the player's movement speed and a conventional FPS value.
 	dvar_s* speedDvar = Dvar_FindMalleableVar("g_speed");
@@ -269,8 +299,6 @@ float cg::getOptAngle(float& _opt, const bool all_techs, const char forwardmoveI
 
 	if (_speed < 190)
 		g_speed = 190.f - (190.f - _speed);
-	else if (GROUND)
-		g_speed = 277.f;
 
 	const double velocitydirection = atan2(clients->cgameVelocity[1], clients->cgameVelocity[0]) * 180.f / PI;
 	const double accelerationAng = atan2(-rightmove, forwardmove) * 180.f / PI;

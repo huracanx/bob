@@ -22,7 +22,7 @@ void cg::Mod_A_Strafebot()
 		clients->viewangles[YAW] = fmodf(clients->viewangles[YAW], 360);
 
 	optYaw = getOptAngle(test, v::mod_strafebot_all.isEnabled(), cmd->forwardmove, cmd->rightmove);
-	if (optYaw == -400.f || std::isnan(optYaw))
+	if (optYaw == -400.f || !std::isfinite(optYaw))
 		return;
 
 	if (cmd->forwardmove != 0 || cmd->rightmove != 0) {
@@ -43,20 +43,10 @@ void cg::Mod_A_Strafebot()
 				
 		}
 
-        // Ground WA/WD can produce a 45-degree target correction on the first
-        // command. Rate-limit the camera turn instead of snapping to that target.
-        // At the preferred 333 FPS this allows about 3.24 degrees per frame
-        // (1080 degrees/second); at other FPS values the time-based rate is kept.
-        if (GROUND) {
-            dvar_s* fpsDvar = Dvar_FindMalleableVar("com_maxfps");
-            const float fps = (fpsDvar && fpsDvar->current.integer > 0)
-                ? (float)fpsDvar->current.integer : 333.0f;
-            const float maxYawStep = 1080.0f / fps;
-            const float currentYaw = clients->cgameViewangles[YAW];
-            const float yawDelta = AngleNormalize180(smoothed_yaw - currentYaw);
-            if (fabsf(yawDelta) > maxYawStep)
-                smoothed_yaw = currentYaw + (yawDelta > 0.0f ? maxYawStep : -maxYawStep);
-        }
+        // On ground apply the optimal correction immediately. Bhop/air
+        // smoothing must not delay ground acceleration.
+        if (GROUND)
+            smoothed_yaw = optYaw;
 
 		setYaw(clients->cgameViewangles[YAW], smoothed_yaw);
 
