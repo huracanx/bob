@@ -133,7 +133,7 @@ int32_t cg::Mod_RecommendedFPS(float yaw, char forwardmove, char rightmove)
 	const dvar_s* _fov = Dvar_FindMalleableVar("cg_fov");
 	const dvar_s* fovscale = Dvar_FindMalleableVar("cg_fovscale");
 
-	const float fov = _fov->current.value * fovscale->current.value * v::mod_fps_transferz.evar->arrayValue[3];
+	const float fov = _fov && fovscale ? _fov->current.value * fovscale->current.value : 90.0f;
 
 	aa > 0 ? aa -= 45 : aa += 45;
 

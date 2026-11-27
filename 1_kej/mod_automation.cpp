@@ -101,7 +101,7 @@ void cg::Mod_A_AutoFPS()
 	if (!v::mod_autoFPS.isEnabled() && !box500.boxExists && v::mod_autoFPS_hug500.GetInt() == 0)
 		return;
 
-	if (jumpanalyzer.recommendedFPS == NULL || analyzer.isPreviewing() || !VID_ACTIVE || jbuilder.isGeneratingMovement())
+	if (analyzer.isPreviewing() || !VID_ACTIVE || jbuilder.isGeneratingMovement())
 		return;
 
 	dvar_s* com_maxfps = Dvar_FindMalleableVar("com_maxfps");
@@ -110,7 +110,16 @@ void cg::Mod_A_AutoFPS()
 
 	bool const spaceHeld = (GetAsyncKeyState(VK_SPACE) < 0) == true;
 
-	int fps = jumpanalyzer.recommendedFPS;
+	// Refresh the recommendation independently of the FPS helper rendering.
+    if (v::mod_autoFPS.isEnabled() && NOT_GROUND && !r::inputCaptured) {
+        const usercmd_s* cmd = cinput->GetUserCmd(cinput->currentCmdNum - 1);
+        const char forward = v::mod_strafebot.isEnabled() ? input->move : (cmd ? cmd->forwardmove : 0);
+        const char side = v::mod_strafebot.isEnabled() ? input->strafe : (cmd ? cmd->rightmove : 0);
+        if (forward != 0 || side != 0)
+            jumpanalyzer.recommendedFPS = Mod_RecommendedFPS(
+                AngleNormalize180(clients->cgameViewangles[YAW]), forward, side);
+    }
+    int fps = jumpanalyzer.recommendedFPS ? jumpanalyzer.recommendedFPS : com_maxfps->current.integer;
 
 	if (!v::mod_autoFPS.isEnabled())
 		fps = com_maxfps->current.integer;
