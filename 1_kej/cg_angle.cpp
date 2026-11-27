@@ -220,7 +220,7 @@ float cg::R_getOptAngle(const bool rightmove, float& diff)
 float cg::getOptAngle(float& _opt, const bool all_techs)
 {
     // Preserve the original entry point for analyzer/jump callers.
-    return getOptAngle(_opt, all_techs, input.move, input.strafe);
+    return getOptAngle(_opt, all_techs, input->move, input->strafe);
 }
 
 float cg::getOptAngle(float& _opt, const bool all_techs, const char forwardmoveIn, const char rightmoveIn)
