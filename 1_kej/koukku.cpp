@@ -4,9 +4,11 @@
 
 LONG hook::install(void** ppPointer, void* pDetour)
 {
-	DetourTransactionBegin();
-	DetourAttach(ppPointer, pDetour);
-	return DetourTransactionCommit();
+    LONG status = DetourTransactionBegin();
+    if (status != NO_ERROR) return status;
+    status = DetourAttach(ppPointer, pDetour);
+    if (status != NO_ERROR) { DetourTransactionAbort(); return status; }
+    return DetourTransactionCommit();
 }
 LONG hook::remove(PVOID* ppPointer, PVOID pDetour)
 {
@@ -58,51 +60,45 @@ void hook::get_bytes(void* addr, size_t len, BYTE* buffer)
 }
 std::uintptr_t hook::find_pattern(std::string moduleName, std::string pattern)
 {
-
-	DWORD firstMatch = 0;
-	DWORD rangeStart = (DWORD)GetModuleHandleA(moduleName.c_str());
-	MODULEINFO miModInfo; K32GetModuleInformation(GetCurrentProcess(), (HMODULE)rangeStart, &miModInfo, sizeof(MODULEINFO));
-	DWORD rangeEnd = rangeStart + miModInfo.SizeOfImage;
-
-	return find_pattern(rangeStart, rangeEnd, pattern);
-
-
+    const HMODULE module = GetModuleHandleA(moduleName.c_str());
+    MODULEINFO info{};
+    if (!module || !K32GetModuleInformation(GetCurrentProcess(), module, &info, sizeof(info)))
+        return 0;
+    const DWORD begin = reinterpret_cast<DWORD>(module);
+    return find_pattern(begin, begin + info.SizeOfImage, pattern);
 }
+
 std::uintptr_t hook::find_pattern(DWORD start_address, DWORD end_address, std::string pattern)
 {
-	hook* a = nullptr;
-	const char* pat = pattern.c_str();
-	//std::cout << "using pattern: [" << pat << "]\n";
-	DWORD firstMatch = 0;
-	MEMORY_BASIC_INFORMATION mbi{};
-	for (DWORD pCur = start_address; pCur < end_address; pCur++)
-	{
-		//if (!VirtualQuery((char*)pCur, &mbi, sizeof(mbi)) || mbi.State != MEM_COMMIT || mbi.Protect == PAGE_NOACCESS) 
-		//	continue;
-
-		if (!*pat)
-			return firstMatch;
-
-		if (*(PBYTE)pat == '\?' || *(BYTE*)pCur == getByte(pat))
-		{
-			if (!firstMatch)
-				firstMatch = pCur;
-
-			if (!pat[2])
-				return firstMatch;
-
-			if (*(PWORD)pat == '\?\?' || *(PBYTE)pat != '\?')
-				pat += 3;
-
-			else
-				pat += 2;    //one ?
-		}
-		else
-		{
-			pat = pattern.c_str();
-			firstMatch = 0;
-		}
-	}
-	std::cout << "pattern not found\n";
-	return NULL;
+    std::istringstream stream(pattern);
+    std::vector<int> bytes;
+    for (std::string token; stream >> token; ) {
+        if (token == "?" || token == "??") bytes.push_back(-1);
+        else if (token.size() == 2) bytes.push_back(getByte(token.c_str()));
+        else return 0;
+    }
+    if (bytes.empty() || end_address <= start_address) return 0;
+    for (DWORD region = start_address; region < end_address; ) {
+        MEMORY_BASIC_INFORMATION mbi{};
+        if (!VirtualQuery(reinterpret_cast<void*>(region), &mbi, sizeof(mbi))) break;
+        const DWORD next = static_cast<DWORD>(reinterpret_cast<std::uintptr_t>(mbi.BaseAddress) + mbi.RegionSize);
+        if (next <= region) break;
+        const DWORD limit = next < end_address ? next : end_address;
+        const DWORD protection = mbi.Protect & 0xff;
+        const bool readable = protection == PAGE_READONLY || protection == PAGE_READWRITE ||
+            protection == PAGE_WRITECOPY || protection == PAGE_EXECUTE_READ ||
+            protection == PAGE_EXECUTE_READWRITE || protection == PAGE_EXECUTE_WRITECOPY;
+        if (mbi.State == MEM_COMMIT && readable && !(mbi.Protect & PAGE_GUARD) &&
+            static_cast<size_t>(limit - region) >= bytes.size()) {
+            const DWORD last = limit - static_cast<DWORD>(bytes.size());
+            for (DWORD pos = region; pos <= last; ++pos) {
+                const BYTE* data = reinterpret_cast<const BYTE*>(pos);
+                size_t i = 0;
+                while (i < bytes.size() && (bytes[i] < 0 || data[i] == bytes[i])) ++i;
+                if (i == bytes.size()) return pos;
+            }
+        }
+        region = next;
+    }
+    return 0;
 }

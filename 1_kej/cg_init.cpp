@@ -138,6 +138,8 @@ void cg::CG_InitHooks()
 	a->install(&(PVOID&)Pmove_f, Pmove);
     // IW3SR uses a distinct FinishMove entry on CoD4X.
     hook bhopHook;
+    bhopCommandCount = 0;
+    bhopJumpCount = 0;
     const auto finishMoveAddress = cod4x_entry
         ? bhopHook.find_pattern("cod4x_021.dll", "?? ?? ?? ?? ?? 15 ?? ?? ?? ?? 8B 44 24 10 88 50 14 8B 15")
         : static_cast<std::uintptr_t>(0x463A60);

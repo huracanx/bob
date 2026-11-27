@@ -92,6 +92,7 @@ int cg::GetKeyBinding(const char* command)
 void __cdecl cg::CL_FinishMove(usercmd_s* cmd)
 {
     CL_FinishMove_f(cmd);
+    ++bhopCommandCount;
     if (!cmd || !v::mod_bhop.evar || !v::mod_bhop.isEnabled() ||
         r::inputCaptured || clc.demoplaying || !(GetAsyncKeyState(VK_SPACE) & 0x8000))
         return;
@@ -110,8 +111,10 @@ void __cdecl cg::CL_FinishMove(usercmd_s* cmd)
             clients->stance = StanceState::CL_STANCE_STAND;
             cmd->buttons &= ~stanceButtons;
         }
-        if (static_cast<long long>(cmd->serverTime) - ps.jumpTime >= 500)
+        if (static_cast<long long>(cmd->serverTime) - ps.jumpTime >= 500) {
             cmd->buttons |= jump;
+            ++bhopJumpCount;
+        }
         else
             cmd->buttons &= ~jump;
     }

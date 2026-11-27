@@ -526,6 +526,11 @@ void Jump_Features()
 		}
 
 
+        if (v::mod_bhop.isEnabled()) {
+            ImGui::Text("Bhop hook: %s", cg::bhopHookInstalled ? "installed" : "unavailable");
+            ImGui::Text("Commands: %lu | Jump requests: %lu", cg::bhopCommandCount, cg::bhopJumpCount);
+        }
+
 		if (ImGui::Checkbox("Disallow halfbeat", &v::mod_disallow_hb.evar->enabled)) {
 			v::mod_disallow_hb.SetValue(v::mod_disallow_hb.isEnabled());
 		} ImGui::SameLine(); r::MetricsHelpMarker("Use if you are feeling brave");
