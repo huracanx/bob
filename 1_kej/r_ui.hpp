@@ -22,7 +22,7 @@ namespace r
 
 	void R_DrawMenuByName(const char* category, const bool JustClicked);
 
-	void R_HomeTab();
+	void R_ConfigsTab();
 
 
 	void R_Automation_Features();

@@ -29,7 +29,7 @@ void r::R_Automation_Features()
         Toggle("Auto Para", v::mod_auto_para);
         Toggle("Auto 250 Switch", v::mod_auto_250);
         Toggle("Halfbeat (A/D)", v::mod_halfbeat);
-        ImGui::TextDisabled("%s | 250 switches: %u", automation.paraActive ? (automation.paraSide > 0 ? "Auto right" : "Auto left") : "Manual / idle", automation.auto250Switches);
+        ImGui::TextDisabled("%s | Auto turns: %u", automation.paraActive ? (automation.paraSide > 0 ? "Auto right" : "Auto left") : "Manual / idle", automation.auto250Switches);
         ImGui::TextDisabled("Default: WA / WD only");
         ImGui::TextDisabled("Auto command: %s", bhopHookInstalled ? "ready" : "unavailable");
         Bind("Bind overwrite", v::mod_strafebot_ow, editOverwrite);
@@ -54,7 +54,7 @@ void r::R_Automation_Features()
         const char* hug[]={"Disabled","333","500","1000"};
         ImGui::SetNextItemWidth(148); if(ImGui::Combo("Bounce FPS",&v::mod_autoFPS_hug500.evar->intValue,hug,4)) v::mod_autoFPS_hug500.SetValue(static_cast<float>(v::mod_autoFPS_hug500.GetInt()));
         ImGui::EndDisabled();
-        if (restricted) ImGui::TextDisabled("Air: 250 / 333 only");
+        if (restricted) ImGui::TextWrapped("Auto legs: 250 / 333 only. Auto Para returns control after two legs.");
         EndPanel();
         BeginPanel("##500_card", "500 FPS area", 200);
         Toggle("Enable spawning",v::mod_auto500_enabled);

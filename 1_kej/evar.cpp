@@ -277,7 +277,6 @@ void Evar_Setup()
 	v::mod_hitanalyzer.Register		("1_kej_hitanalyzer",				evartype_t::EVAR_BOOL,		(float)0,				true);
 	v::mod_jumpanalyzer.Register	("1_kej_jumpanalyzer",				evartype_t::EVAR_BOOL,		(float)0,				true);
 	v::mod_bhop.Register			("1_kej_bhop",						evartype_t::EVAR_BOOL,		(float)0,				true);
-	v::mod_elevatable_surf.Register	("1_kej_elevatable_surf",			evartype_t::EVAR_BOOL, 		(float)0,				true);
 	v::mod_bounceable_surf.Register	("1_kej_bounceable_surf",			evartype_t::EVAR_BOOL,		(float)0,				true);
 	v::mod_pmove_fixed.Register		("1_kej_pmove_fixed",				evartype_t::EVAR_BOOL,		(float)0,				true);
 	v::mod_anglehelper.Register		("1_kej_anglehelper",				evartype_t::EVAR_ARRAY,		mod_anglehelper, 4,		true); //enabled, x, y, scale
@@ -330,6 +329,7 @@ void Evar_Setup()
 	v::mod_chams_col.Register		("1_kej_chams_col",					evartype_t::EVAR_VEC4,		vec4_t{ 1,1,1,1 },		true);
 	v::mod_chams_zcol.Register		("1_kej_chams_zcol",				evartype_t::EVAR_VEC4,		vec4_t{ 1,0,0,1 },		true);
 	v::mod_chams_wireframe.Register ("1_kej_chams_wireframe",			evartype_t::EVAR_BOOL,		(float)0,				true);
+    v::mod_chams_rainbow.Register("1_kej_chams_rainbow", evartype_t::EVAR_BOOL, 0.f, true);
 
 	v::mod_unlim_bounces.Register	("1_kej_unlim_bounces",				evartype_t::EVAR_BOOL,		(float)0,				true);
 	v::mod_terrain_bounces.Register	("1_kej_terrain_bounces",			evartype_t::EVAR_BOOL,		(float)0,				true);

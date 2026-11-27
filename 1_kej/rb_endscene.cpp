@@ -157,6 +157,7 @@ char r::RB_DrawDebug(GfxViewParms* viewParms)
 //	if (GetAsyncKeyState(VK_NUMPAD1) & 1) {
 
 	RBW_TerrainClips();
+    RBW_BounceableSlopes();
 	
 
 	return RB_DrawDebug_f(viewParms);

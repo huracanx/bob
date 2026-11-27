@@ -8,6 +8,7 @@
 namespace r
 {
 	void RBW_TerrainClips();
+    void RBW_BounceableSlopes();
 }
 
 #endif

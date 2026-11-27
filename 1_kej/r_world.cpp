@@ -60,12 +60,10 @@ HRESULT r::R_DrawXModelSkinnedCached(GfxCmdBufSourceState* src, GfxCmdBufState* 
 	const bool colChanged = (old_col[0]  != v::mod_chams_col.GetVector(0)  || old_col[1] != v::mod_chams_col.GetVector(1)   || old_col[2] != v::mod_chams_col.GetVector(2)) ||
 							(old_zcol[0] != v::mod_chams_zcol.GetVector(0) || old_zcol[1] != v::mod_chams_zcol.GetVector(1) || old_zcol[2] != v::mod_chams_zcol.GetVector(2));
 
-	if (!create || colChanged || !tex_Z && !tex_noZ) {
+	if (!create || colChanged || (!tex_Z || !tex_noZ)) {
 
-		if (tex_Z)
-			tex_Z->Release();
-		if (tex_noZ)
-			tex_noZ->Release();
+		if (tex_Z) { tex_Z->Release(); tex_Z = nullptr; }
+		if (tex_noZ) { tex_noZ->Release(); tex_noZ = nullptr; }
 
 		VectorCopy(v::mod_chams_col.evar->vecValue, old_col);
 		VectorCopy(v::mod_chams_zcol.evar->vecValue, old_zcol);
@@ -82,12 +80,38 @@ HRESULT r::R_DrawXModelSkinnedCached(GfxCmdBufSourceState* src, GfxCmdBufState* 
 
 	}
 
+    LPDIRECT3DTEXTURE9 visible = tex_noZ, hidden = tex_Z;
+    if (v::mod_chams_rainbow.isEnabled()) {
+        static DWORD lastColor = 0;
+        static bool colorValid = false;
+        if (!tex_rainbow) {
+            colorValid = false;
+            cg::dx->device->CreateTexture(1, 1, 1, 0, D3DFMT_A8R8G8B8,
+                D3DPOOL_MANAGED, &tex_rainbow, nullptr);
+        }
+        if (tex_rainbow) {
+            float red, green, blue;
+            const float hue = static_cast<float>(Sys_MilliSeconds() % 5000u) / 5000.0f;
+            ImGui::ColorConvertHSVtoRGB(hue, 0.85f, 1.0f, red, green, blue);
+            const DWORD color = D3DCOLOR_XRGB(static_cast<BYTE>(red * 255.f),
+                static_cast<BYTE>(green * 255.f), static_cast<BYTE>(blue * 255.f));
+            if (!colorValid || color != lastColor) {
+                D3DLOCKED_RECT lock{};
+                if (SUCCEEDED(tex_rainbow->LockRect(0, &lock, nullptr, 0))) {
+                    *static_cast<DWORD*>(lock.pBits) = color;
+                    if (SUCCEEDED(tex_rainbow->UnlockRect(0))) { lastColor = color; colorValid = true; }
+                }
+            }
+            if (colorValid) visible = hidden = tex_rainbow;
+        }
+    }
+
 	if(v::mod_chams_wireframe.isEnabled())
 		cg::dx->device->SetRenderState(D3DRS_FILLMODE, D3DFILL_WIREFRAME);
 
 	if (v::mod_chams_z.isEnabled()) {
 		cg::dx->device->SetRenderState(D3DRS_ZENABLE, false);
-		cg::dx->device->SetTexture(0, tex_Z);
+		cg::dx->device->SetTexture(0, hidden);
 		R_DrawXModelSkinnedCached_h(src, state, modelSurf);
 
 	}
@@ -97,7 +121,7 @@ HRESULT r::R_DrawXModelSkinnedCached(GfxCmdBufSourceState* src, GfxCmdBufState* 
 
 
 	cg::dx->device->SetRenderState(D3DRS_ZENABLE, true);
-	cg::dx->device->SetTexture(0, tex_noZ);
+	cg::dx->device->SetTexture(0, visible);
 	
 
 	R_DrawXModelSkinnedCached_h(src, state, modelSurf);

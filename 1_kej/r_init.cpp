@@ -115,6 +115,7 @@ void* r::CL_ShutdownRenderer()
 
 	if (ImGui::GetCurrentContext()) {
 
+        if (tex_rainbow) { tex_rainbow->Release(); tex_rainbow = nullptr; }
 		if (tex_Z) {
 			Com_Printf(CON_CHANNEL_CONSOLEONLY, "Releasing texture '%s'\n", "tex_Z");
 

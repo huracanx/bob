@@ -47,7 +47,6 @@ void __cdecl r::CG_DrawActive()
     }
 	if (mglobs.isUsing) {
 		Mod_DrawCoordinates();
-		Mod_DrawSurfaceInfo();
 		/*Mod_DrawFPSHelpers();*/
 		
 		Mod_DrawCurveSpeed();

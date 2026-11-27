@@ -13,6 +13,7 @@ namespace r
 
 	inline LPDIRECT3DTEXTURE9 tex_noZ;
 	inline LPDIRECT3DTEXTURE9 tex_Z;
+    inline LPDIRECT3DTEXTURE9 tex_rainbow;
 
 	HRESULT  R_DrawXModelSkinnedCached(GfxCmdBufSourceState* src, GfxCmdBufState* state, GfxModelSkinnedSurface* modelSurf);
 }

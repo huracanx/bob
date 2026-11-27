@@ -63,18 +63,15 @@ void Visual_Features()
 {
 	//ImGui::Text("Basic");
 	//ImGui::Separator();
-	static ImVec2 childSize = ImVec2(250, ImGui::GetWindowSize().y - 30);
 
 	//ImGui::BeginChild("ah#001", childSize);
 	ImGui::BeginGroup();
 
 	ImGui::Text("Basic\t"); 
 	{
-		r::UI_DrawGradientZone(ImVec2(300, 100));
-
-		ImGui::Text("\t"); ImGui::SameLine();
+		ImGui::BeginChild("##visual_basic", ImVec2(325, 144), true);
 		ImGui::BeginGroup();
-		if (ImGui::Checkbox("velometer   \t", &v::mod_velometer.evar->enabled)) {
+		if (ImGui::Checkbox("Velometer", &v::mod_velometer.evar->enabled)) {
 			float val = (float)v::mod_velometer.evar->enabled;
 			v::mod_velometer.SetValue(&val, 1, 0);
 		}
@@ -88,13 +85,13 @@ void Visual_Features()
 			if (editing) {
 				ImGui::Begin("Modify velometer", &editing, ImGuiWindowFlags_AlwaysAutoResize);
 
-				ImGui::PushItemWidth(100);
+				ImGui::SetNextItemWidth(100);
 				ImGui::DragFloat("x", &v::mod_velometer.evar->arrayValue[1], 1.f, 0.f, 1920.f, "%.0f");
 
-				ImGui::PushItemWidth(100);
+				ImGui::SetNextItemWidth(100);
 				ImGui::DragFloat("y", &v::mod_velometer.evar->arrayValue[2], 1.f, 0.f, 1080.f, "%.0f");
 
-				ImGui::PushItemWidth(100);
+				ImGui::SetNextItemWidth(100);
 				ImGui::DragFloat("font scale", &v::mod_velometer.evar->arrayValue[3], 0.25f, 0.f, 10.f, "%.2f");
 
 				ImGui::ColorEdit4("glow color", v::mod_velometer_glow.evar->vecValue, ImGuiColorEditFlags_NoInputs);
@@ -109,8 +106,8 @@ void Visual_Features()
             v::mod_hit_visualizer.SetValue(v::mod_hit_visualizer.isEnabled());
             cg::Mod_ResetHitVisualizer();
         }
-        ImGui::SameLine(); r::MetricsHelpMarker("Last jump trail and player bounds at predicted bounce contact");
-		if (ImGui::Checkbox("coordinates\t", &v::mod_coordinates.evar->enabled)) {
+        if (ImGui::IsItemHovered()) ImGui::SetTooltip("Last jump trail and player bounds at predicted bounce contact");
+		if (ImGui::Checkbox("Coordinates", &v::mod_coordinates.evar->enabled)) {
 			float val = (float)v::mod_coordinates.evar->enabled;
 			v::mod_coordinates.SetValue(&val, 1, 0);
 
@@ -123,62 +120,63 @@ void Visual_Features()
 			if (editing) {
 				ImGui::Begin("Modify Coordinates", &editing, ImGuiWindowFlags_AlwaysAutoResize);
 
-				ImGui::PushItemWidth(100);
+				ImGui::SetNextItemWidth(100);
 				ImGui::DragFloat("x", &v::mod_coordinates.evar->arrayValue[1], 1.f, 0.f, 1920.f, "%.0f");
 
-				ImGui::PushItemWidth(100);
+				ImGui::SetNextItemWidth(100);
 				ImGui::DragFloat("y", &v::mod_coordinates.evar->arrayValue[2], 1.f, 0.f, 1080.f, "%.0f");
 
-				ImGui::PushItemWidth(100);
+				ImGui::SetNextItemWidth(100);
 				ImGui::DragFloat("font scale", &v::mod_coordinates.evar->arrayValue[3], 0.25f, 0.f, 10.f, "%.2f");
 				ImGui::End();
 			}
 		}
 		ImGui::EndGroup();
+        ImGui::EndChild();
 	}
 	//ImGui::NewLine();
 	ImGui::Text("\nCrosshair\t"); {
 
 	//	ImGui::BeginChild("crosshairchild##02", ImVec2(300, 150));
-		r::UI_DrawGradientZone(ImVec2(300, 100));
+		ImGui::BeginChild("##visual_crosshair", ImVec2(325, 105), true);
 
-		ImGui::Text("\t"); ImGui::SameLine();
+		
 		ImGui::BeginGroup();
 
 		ImGui::ColorEdit3("crosshair color", v::mod_crosshair.evar->vecValue, ImGuiColorEditFlags_NoInputs);
-		ImGui::PushItemWidth(70);
+		ImGui::SetNextItemWidth(70);
 		ImGui::SliderFloat("Min Alpha", &v::mod_crosshair.evar->vecValue[3], 0, 1, "%.2f"); ImGui::SameLine();  r::MetricsHelpMarker("Minimum amount of transparency the crosshair can have");
 	//	ImGui::EndChild();
 
 		ImGui::EndGroup();
+        ImGui::EndChild();
 
 	}
 	ImGui::Text("\nWorld\t"); {
 
-		r::UI_DrawGradientZone(ImVec2(300, 100));
+		ImGui::BeginChild("##visual_world", ImVec2(325, 68), true);
 
 		//ImGui::GradientButton(&grad);
 
-		ImGui::Text("\t"); ImGui::SameLine();
+		
 		ImGui::BeginGroup();
 
-		if (ImGui::Checkbox("bounceable surface", &v::mod_bounceable_surf.evar->enabled)) {
+		if (ImGui::Checkbox("Bounceable Slopes", &v::mod_bounceable_surf.evar->enabled)) {
 			v::mod_bounceable_surf.SetValue(v::mod_bounceable_surf.isEnabled());
-		} ImGui::SameLine(); r::MetricsHelpMarker("notify if you are looking at a bounce");
-		if (ImGui::Checkbox("elevatable surface", &v::mod_elevatable_surf.evar->enabled)) {
-			v::mod_elevatable_surf.SetValue(v::mod_elevatable_surf.isEnabled());
-		} ImGui::SameLine(); r::MetricsHelpMarker("notify if you are looking at an elevatable wall");
+		}
+        if (ImGui::IsItemHovered()) ImGui::SetTooltip("Highlight nearby collision slopes with bounceable normals");
 
 		ImGui::EndGroup();
+        ImGui::EndChild();
 
 	}
 	ImGui::Text("\nViewhands\t"); {
 
-		r::UI_DrawGradientZone(ImVec2(300, 150));
+		ImGui::BeginChild("##visual_viewhands", ImVec2(325, 180), true);
 
 		//ImGui::GradientButton(&grad);
 
-		ImGui::Text("\t"); ImGui::SameLine();
+		
 		ImGui::BeginGroup();
 
 		if (ImGui::Checkbox("Chams", &v::mod_chams.evar->enabled))
@@ -186,6 +184,8 @@ void Visual_Features()
 
 		ImGui::SameLine();
 		ImGui::ColorEdit3("##aaaa", v::mod_chams_col.evar->vecValue, ImGuiColorEditFlags_NoInputs);
+        if (ImGui::Checkbox("Rainbow chams", &v::mod_chams_rainbow.evar->enabled))
+            v::mod_chams_rainbow.SetValue(v::mod_chams_rainbow.isEnabled());
 
 		if (!v::mod_chams.isEnabled())
 			ImGui::BeginDisabled();
@@ -203,8 +203,9 @@ void Visual_Features()
 			ImGui::EndDisabled();
 
 		ImGui::EndGroup();
+        ImGui::EndChild();
 
-		ImGui::Text("\n\n");
+		
 	}
 	ImGui::EndGroup();
 
@@ -411,16 +412,7 @@ void Visual_Features()
 	//	ImGui::PushItemWidth(70);
 	//	ImGui::SliderFloat("Min Alpha", &v::mod_crosshair.evar->vecValue[3], 0, 1, "%.2f"); ImGui::SameLine();  r::MetricsHelpMarker("Minimum amount of transparency the crosshair can have");
 	//}
-	//if (ImGui::CollapsingHeader("World")) {
-	//	//ImGui::Text("Advanced");
-	//	//ImGui::Separator();
 
-	//	if (ImGui::Checkbox("bounceable surface", &v::mod_bounceable_surf.evar->enabled)) {
-	//		v::mod_bounceable_surf.SetValue(v::mod_bounceable_surf.isEnabled());
-	//	} ImGui::SameLine(); r::MetricsHelpMarker("notify if you are looking at a bounce");
-	//	if (ImGui::Checkbox("elevatable surface", &v::mod_elevatable_surf.evar->enabled)) {
-	//		v::mod_elevatable_surf.SetValue(v::mod_elevatable_surf.isEnabled());
-	//	} ImGui::SameLine(); r::MetricsHelpMarker("notify if you are looking at an elevatable wall");
 	}
 }
 void RPG_Features()
@@ -531,11 +523,6 @@ void Jump_Features()
 		}
 
 
-        if (v::mod_bhop.isEnabled()) {
-            ImGui::Text("Bhop command hook: %s", cg::bhopHookInstalled ? "installed" : "unavailable");
-            ImGui::Text("Commands: %lu | Jump requests: %lu", cg::bhopCommandCount, cg::bhopJumpCount);
-            ImGui::Text("Address: %08lX | Status: %ld", cg::bhopHookAddress, cg::bhopHookError);
-        }
 
 		if (ImGui::Checkbox("Disallow halfbeat", &v::mod_disallow_hb.evar->enabled)) {
 			v::mod_disallow_hb.SetValue(v::mod_disallow_hb.isEnabled());
@@ -631,8 +618,8 @@ void r::R_DrawMenuByName(const char* category, bool justPressed)
 		R_Automation_Features();
 		
 	}
-	else if (!strcmp("Home", category)) {
-		R_HomeTab();
+	else if (!strcmp("Configs", category)) {
+		R_ConfigsTab();
 	}
 	
 	
@@ -659,7 +646,7 @@ void r::R_DrawMenuByName(const char* category, bool justPressed)
 void r::R_Features()
 {
     static int active = 0;
-    const char* pages[] = { "Automation", "Jumping", "Rpg", "Visuals", "Map", "Home" };
+    const char* pages[] = { "Automation", "Jumping", "Rpg", "Visuals", "Map", "Configs" };
     ImGui::BeginChild("##sidebar", ImVec2(206, 0), false);
     ImDrawList* draw = ImGui::GetWindowDrawList();
     const ImVec2 origin = ImGui::GetWindowPos();
@@ -672,6 +659,7 @@ void r::R_Features()
     ImGui::SetWindowFontScale(1.16f);
     ImGui::SetCursorPosY(92);
     for (int i=0; i<6; ++i) {
+        if (i == 5 && ImGui::GetContentRegionAvail().y > 108) ImGui::SetCursorPosY(extent.y - 112);
         if (i==0 || i==3 || i==5) {
             ImGui::SetCursorPosX(12);
             ImGui::TextDisabled("%s", i==0 ? "Movement" : i==3 ? "Visuals" : "Miscellaneous");
@@ -713,7 +701,7 @@ void r::R_Features()
     ImGui::EndChild();
 }
 
-void r::R_HomeTab()
+void r::R_ConfigsTab()
 {
 	const auto FetchConfigs = [](std::vector<std::string>& cfgs)->bool {
 		cfgs.clear();
