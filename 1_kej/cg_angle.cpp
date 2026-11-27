@@ -274,8 +274,9 @@ float cg::getOptAngle(float& _opt, const bool all_techs, int forwardmoveInput, i
 
 	if (_speed < 190.0f)
 		g_speed = _speed;
-	else if (GROUND)
-		g_speed = 277.0f;
+	// Do not force 277 on the ground: with normal CoD4 ground speed this
+	// makes acosArg exceed 1, clamps diff to zero, and removes ground steering.
+	// Keep the actual movement-speed target from g_speed / playerstate instead.
 
 	const double velocitydirection =
 		atan2((double)clients->cgameVelocity[1],
