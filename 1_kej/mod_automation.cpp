@@ -5,13 +5,16 @@ void cg::Mod_A_Strafebot()
     static DWORD lastGroundUpdate = 0;
     static float groundBlend = 0.0f;
     static int lastGroundSide = 0;
+    static int lastAirSide = 0;
+    static DWORD lastAirUpdate = 0;
+    static DWORD airSwitchTime = 0;
     const auto resetGround = [&]() {
         lastGroundUpdate = 0;
         groundBlend = 0.0f;
         lastGroundSide = 0;
     };
-	if (!v::mod_strafebot.isEnabled() || clients->snap.ps.pm_type == PM_UFO || v::mod_strafebot.isEnabled() && (GetAsyncKeyState(v::mod_strafebot_ow.GetInt()) < 0) == true)
-	{ resetGround(); return; }
+	if (r::inputCaptured || !v::mod_strafebot.isEnabled() || clients->snap.ps.pm_type == PM_UFO || v::mod_strafebot.isEnabled() && (GetAsyncKeyState(v::mod_strafebot_ow.GetInt()) < 0) == true)
+	{ resetGround(); lastAirSide = 0; lastAirUpdate = 0; airSwitchTime = 0; return; }
 
 	const usercmd_s* cmd = cinput->GetUserCmd(cinput->currentCmdNum - 1);
 
@@ -19,6 +22,7 @@ void cg::Mod_A_Strafebot()
     // "All Techniques" option; that option remains relevant to other patterns.
     if (cmd->rightmove == 0 || (GROUND && cmd->forwardmove <= 0)) {
         resetGround();
+        if (GROUND) { lastAirSide = 0; lastAirUpdate = 0; airSwitchTime = 0; }
         return;
     }
     if (NOT_GROUND)
@@ -38,47 +42,50 @@ void cg::Mod_A_Strafebot()
     }
 
     if (GROUND) {
+        lastAirSide = 0; lastAirUpdate = 0; airSwitchTime = 0;
         const DWORD now = Sys_MilliSeconds();
         const int side = cmd->rightmove > 0 ? 1 : -1;
-        if (!lastGroundUpdate || now - lastGroundUpdate > 100 || side != lastGroundSide) {
+        if (!lastGroundUpdate || now - lastGroundUpdate > 100) {
             lastGroundUpdate = now;
             lastGroundSide = side;
             groundBlend = 0.0f;
             return; // Preserve camera on engagement and direction changes.
         }
+        const bool switched = side != lastGroundSide;
+        lastGroundSide = side;
+        if (switched) groundBlend = glm::max(groundBlend, 0.75f);
         const float dt = glm::min(0.025f, (now - lastGroundUpdate) * 0.001f);
         lastGroundUpdate = now;
         groundBlend = glm::min(1.0f, groundBlend + dt / 0.15f);
         const float yaw = clients->cgameViewangles[YAW];
         const float error = AngleNormalize180(optYaw - yaw);
-        const float maxStep = (60.0f + 180.0f * groundBlend) * dt;
+        const float maxStep = (60.0f + 180.0f * groundBlend + (switched ? 180.0f : 0.0f)) * dt;
         const float correction = glm::clamp(error * glm::min(1.0f, dt * 18.0f) * groundBlend,
                                             -maxStep, maxStep);
         clients->viewangles[YAW] += correction;
         return;
     }
 
-	if (cmd->forwardmove != 0 || cmd->rightmove != 0) {
-		float smoothed_yaw = optYaw;
+    const DWORD now = Sys_MilliSeconds();
+    const int side = cmd->rightmove > 0 ? 1 : -1;
+    const bool continuous = lastAirUpdate && now - lastAirUpdate <= 100;
+    if (continuous && lastAirSide && side != lastAirSide)
+        airSwitchTime = now;
+    if (!continuous) airSwitchTime = 0;
+    const float dt = continuous ? glm::clamp((now - lastAirUpdate) * 0.001f, 0.0f, 0.025f) : 0.003f;
+    lastAirUpdate = now;
+    lastAirSide = side;
+    const float error = AngleNormalize180(optYaw - clients->cgameViewangles[YAW]);
+    const bool switching = airSwitchTime && now - airSwitchTime < 65;
+    const int sinceJump = jumpanalyzer.serverTime - jumpanalyzer.airTime;
+    const int sinceGround = jumpanalyzer.serverTime - jumpanalyzer.groundTime;
+    const float smoothing = glm::max(1.0f, (sinceJump >= 0 && sinceJump < 300 || sinceGround < 200)
+        ? v::mod_strafebot_bhop_s.GetFloat() : v::mod_strafebot_smooth.GetFloat());
+    // Fast shortest-arc correction during WA/WD reversal; normal smoothing otherwise.
+    const float alpha = switching ? 1.0f : (smoothing <= 1.0f ? 1.0f : 1.0f - powf(1.0f - 1.0f / smoothing, dt * 125.0f));
+    const float correction = switching ? glm::clamp(error, -1800.0f * dt, 1800.0f * dt) : error * alpha;
+    clients->viewangles[YAW] += correction;
 
-		const int time_since_jumped = jumpanalyzer.serverTime - jumpanalyzer.airTime;
-		const int groundTime = jumpanalyzer.serverTime - jumpanalyzer.groundTime;
-
-
-		if (NOT_GROUND && v::mod_strafebot_smooth.GetFloat() != 1.f || (time_since_jumped > 0 && time_since_jumped < 300 || groundTime < 200) && v::mod_strafebot_bhop_s.GetFloat() != 1.f) {
-			const float dist2opt = DistanceToOpt(optYaw, clients->cgameViewangles[YAW]);
-			if (time_since_jumped < 400 && dist2opt > 1) {
-				CG_ApplySmoothing(clients->cgameViewangles[YAW], optYaw, v::mod_strafebot_bhop_s.GetFloat(), smoothed_yaw);
-			}
-			else if (dist2opt > 1 && dist2opt < 90)
-				CG_ApplySmoothing(clients->cgameViewangles[YAW], optYaw, v::mod_strafebot_smooth.GetFloat(), smoothed_yaw);
-			
-				
-		}
-
-		setYaw(clients->cgameViewangles[YAW], smoothed_yaw);
-
-	}
 }
 void cg::Mod_A_AutoFPS()
 {

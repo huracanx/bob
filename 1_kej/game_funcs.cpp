@@ -102,7 +102,7 @@ void OpenMenu_f()
         std::cout << "calling R_RemoveInput() from R_OpenMenu()\n";
         r::R_RemoveInput(r::should_draw_menu);
         analyzer.setPreviewState(false);
-        CG_SetPlayerAngles(clients->viewangles, r::angles_before_menu);
+        // Input capture already preserves raw view angles; do not apply a second rotation.
         return;
     }
     VectorCopy(clients->cgameViewangles, r::angles_before_menu);
