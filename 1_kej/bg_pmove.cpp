@@ -300,7 +300,8 @@ void cg::Mod_DetermineFPS(pmove_t* pm, pml_t* pml)
 	fps_zones.fps250 = round((float)ps->speed / 4) + 10;
 	fps_zones.fps333 = round((float)ps->speed / 3) + 10;
 	
-	const bool long125 = v::mod_autoFPS_long125.isEnabled();
+	const bool long125 = v::mod_autoFPS_long125.isEnabled() && !(v::mod_strafebot.isEnabled() && NOT_GROUND &&
+        (v::mod_auto_para.isEnabled() || v::mod_auto_250.isEnabled()));
 	const float diff = ((float)ps->speed / 190.f);
 
 

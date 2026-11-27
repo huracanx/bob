@@ -220,7 +220,11 @@ void cg::Mod_DrawFPSHelpers()
 
 	
 
-	aa > 0 ? aa -= 45 : aa += 45;
+	if (automation.paraActive && cmd->forwardmove > 0 && cmd->rightmove == 0) {
+        rightmove = automation.paraSide > 0;
+        aa = 0.0f;
+    } else
+        aa > 0 ? aa -= 45 : aa += 45;
 
 	static const float m250 = 86.f;
 	vec2_t marker250 = { m250, 90.f + m250 };
@@ -255,7 +259,8 @@ void cg::Mod_DrawFPSHelpers()
 
 
 	float &DistanceFromZone = mod_fps.DistanceToTransferZone;
-	const bool isLong125 = v::mod_autoFPS_long125.isEnabled();
+	const bool isLong125 = v::mod_autoFPS_long125.isEnabled() && !(v::mod_strafebot.isEnabled() && NOT_GROUND &&
+        (v::mod_auto_para.isEnabled() || v::mod_auto_250.isEnabled()));
 
 	const bool cylindrical = v::mod_FPS_cylindrical.isEnabled();
 

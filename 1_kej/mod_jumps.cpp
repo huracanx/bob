@@ -138,7 +138,7 @@ int32_t cg::Mod_RecommendedFPS(float yaw, char forwardmove, char rightmove)
 	const float fov = _fov && fovscale ? _fov->current.value * fovscale->current.value : 90.0f;
 
 	if (rightmove == 0 && NOT_GROUND && forwardmove > 0 && (v::mod_auto_para.isEnabled() || v::mod_auto_250.isEnabled()) && v::mod_strafebot.isEnabled())
-        aa = _rightmove ? 45.0f : -45.0f;
+        aa = 0.0f;
     else
         aa > 0 ? aa -= 45 : aa += 45;
 
@@ -162,7 +162,8 @@ int32_t cg::Mod_RecommendedFPS(float yaw, char forwardmove, char rightmove)
 		yaw = 180.f - fabs(yaw);
 
 
-	const bool isLong125 = v::mod_autoFPS_long125.isEnabled();
+	const bool isLong125 = v::mod_autoFPS_long125.isEnabled() && !(v::mod_strafebot.isEnabled() && NOT_GROUND &&
+        (v::mod_auto_para.isEnabled() || v::mod_auto_250.isEnabled()));
 
 	range_t ranges, ranges2;
 

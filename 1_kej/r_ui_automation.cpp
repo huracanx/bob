@@ -31,9 +31,6 @@ void r::R_Automation_Features()
         Toggle("Halfbeat (A/D)", v::mod_halfbeat);
         ImGui::TextDisabled("%s | 250 switches: %u", automation.paraActive ? (automation.paraSide > 0 ? "Auto right" : "Auto left") : "Manual / idle", automation.auto250Switches);
         ImGui::TextDisabled("Default: WA / WD only");
-        Toggle("Engine acceleration", v::mod_strafebot_accel);
-        ImGui::SetNextItemWidth(105); ImGui::DragFloat("Smoothing", &v::mod_strafebot_smooth.evar->floatValue, .5f,1,45,"%.2f");
-        ImGui::SetNextItemWidth(105); ImGui::DragFloat("Bhop smoothing", &v::mod_strafebot_bhop_s.evar->floatValue, .5f,1,100,"%.2f");
         Bind("Bind overwrite", v::mod_strafebot_ow, editOverwrite);
         EndPanel();
         BeginPanel("##slide_card", "Edge Slide", 190);

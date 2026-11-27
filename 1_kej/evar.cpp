@@ -313,9 +313,6 @@ void Evar_Setup()
 	v::mod_strafebot.Register		("1_kej_strafebot",					evartype_t::EVAR_BOOL,		(float)0,				true);
 	v::mod_strafebot_all.Register   ("1_kej_strafebot_all",				evartype_t::EVAR_BOOL,		(float)0,				true);
 	v::mod_strafebot_ow.Register	("1_kej_strafebot_ow",				evartype_t::EVAR_INT,		(float)0,				true);
-	v::mod_strafebot_smooth.Register("1_kej_strafebot_smooth",			evartype_t::EVAR_FLOAT,		(float)1,				true);
-	v::mod_strafebot_bhop_s.Register("1_kej_strafebot_bhop_s",			evartype_t::EVAR_FLOAT,		(float)1,				true);
-	v::mod_strafebot_accel.Register	("1_kej_strafebot_accel",			evartype_t::EVAR_BOOL,		(float)1,				true);
 
 	v::mod_halfbeat.Register("1_kej_halfbeat", evartype_t::EVAR_BOOL, (float)0, true);
 	v::mod_auto_para.Register("1_kej_auto_para", evartype_t::EVAR_BOOL, (float)0, true);

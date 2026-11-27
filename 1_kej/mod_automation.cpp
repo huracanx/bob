@@ -1,51 +1,114 @@
 #include "pch.h"
 
 namespace {
-    // Same 90-degree periodic coordinates as the FPS transfer bar. Keep the
-    // restricted modes independent of its projection, Long 125, and overrides.
-    double ZonePhase(double angle) {
-        const double phase = std::fmod(angle, 90.0);
-        return phase < 0.0 ? phase + 90.0 : phase;
+    // Keep an absolute, unwrapped copy of the FPS bands for a W-only run.
+    // Repeating the phase every 90 degrees during a run would permit another
+    // world-axis sector to be selected after the original band is exhausted.
+    struct AirBand {
+        double lo, hi;
+        bool Contains(double x) const { return hi > lo && x >= lo && x < hi; }
+    };
+    struct AirBands {
+        AirBand fps333, fps250;
+        int At(double x) const {
+            return fps333.Contains(x) ? 333 : fps250.Contains(x) ? 250 : 0;
+        }
+    };
+    AirBands MakeBands(int speed, int side, double origin) {
+        const double edge333 = std::round(speed / 3.0) + 10.0;
+        const double edge250 = std::round(speed / 4.0) + 10.0;
+        const double len250 = 2.0 * edge250 - 96.0;
+        const double start250 = 3.0 * edge250 - 101.0;
+        const double left250 = side > 0 ? 90.0 - start250 - len250 : start250;
+        return {{origin + 90.0 - edge333, origin + edge333},
+                {origin + left250, origin + left250 + len250}};
     }
-    bool InZone(double phase, double start, double length) {
-        return length > 0.0 && ZonePhase(phase - start) < length;
+    // Choose the copy containing the starting angle, or the nearest copy if
+    // it lies in a gap. Never choose another copy until manual input resumes.
+    double FindBandOrigin(double yaw, int side, int speed) {
+        const double base = std::floor(yaw / 90.0) * 90.0;
+        double origin = base, best = 1e30;
+        for (int i = -1; i <= 1; ++i) {
+            const double candidate = base + i * 90.0;
+            const auto b = MakeBands(speed, side, candidate);
+            if (b.At(yaw)) return candidate;
+            for (const AirBand band : {b.fps333, b.fps250}) {
+                if (band.hi <= band.lo) continue;
+                const double d = yaw < band.lo ? band.lo - yaw : yaw > band.hi ? yaw - band.hi : 0.0;
+                if (d < best) { best = d; origin = candidate; }
+            }
+        }
+        return origin;
+    }
+    double AngleOffset(int forward, int strafe, int side) {
+        // A W-only continuation preserves the previous diagonal's displayed
+        // sector. Do not introduce a new +/-45-degree phase on release.
+        if (forward == 127 && strafe == 0) return 0.0;
+        return std::atan2(-static_cast<double>(strafe), static_cast<double>(forward)) * 57.29577951308232
+            + (side > 0 ? 45.0 : -45.0);
     }
     int RestrictedZoneFPS(float yaw, int forward, int strafe, int side, int speed) {
         if (!std::isfinite(yaw) || speed <= 0 || side == 0) return 0;
-        double aa = std::atan2(-static_cast<double>(strafe), static_cast<double>(forward)) * 57.29577951308232;
-        aa += side > 0 ? 45.0 : -45.0;
-        const double phase = ZonePhase(static_cast<double>(yaw) + aa);
-        // Derive ordinary (not Long 125) zones from the same speed equations
-        // as PM_Accelerate. 333 takes priority over overlapping 250.
-        const float edge333 = roundf(speed / 3.0f) + 10.0f;
-        const float len333 = 2.0f * edge333 - 90.0f;
-        const float edge250 = roundf(speed / 4.0f) + 10.0f;
-        const float len250 = 2.0f * edge250 - 96.0f;
-        float start250 = 3.0f * edge250 - 101.0f;
-        if (side > 0) start250 = 180.0f - start250 - len250;
-        if (InZone(phase, 90.0f - edge333, len333)) return 333;
-        if (InZone(phase, start250, len250)) return 250;
-        return 0;
+        const double phase = yaw + AngleOffset(forward, strafe, side);
+        const double base = std::floor(phase / 90.0) * 90.0;
+        bool in250 = false;
+        for (int i = -1; i <= 1; ++i) {
+            const int fps = MakeBands(speed, side, base + 90.0 * i).At(phase);
+            if (fps == 333) return 333;
+            in250 = in250 || fps == 250;
+        }
+        return in250 ? 250 : 0;
     }
     bool RestrictedAirMode() {
         return v::mod_strafebot.isEnabled() && NOT_GROUND && !jumpanalyzer.walking &&
             (v::mod_auto_para.isEnabled() || v::mod_auto_250.isEnabled());
     }
-    // Check the entire requested turn, not merely its endpoint. No jumping
-    // across a forbidden interval or turning back against the saved side.
-    float LimitAutoTurn(float yaw, float correction, int side, int speed, bool allowSwitch) {
-        const int initial = RestrictedZoneFPS(yaw, 127, 0, side, speed);
-        if (!initial || side * correction >= 0.0f) return 0.0f;
-        const float distance = fabsf(correction);
-        float accepted = 0.0f;
-        const int steps = static_cast<int>(ceilf(distance / 0.05f));
+    struct AutoSector {
+        bool active = false;
+        int side = 0, fps = 0;
+        double origin = 0.0, lastYaw = 0.0;
+        void Reset() { active = false; side = fps = 0; }
+        double Unwrap(double yaw) const {
+            return lastYaw + std::remainder(yaw - lastYaw, 360.0);
+        }
+        void Begin(double yaw, int direction, int speed, int fallbackFPS) {
+            active = true; side = direction; lastYaw = yaw;
+            origin = FindBandOrigin(yaw, direction, speed);
+            fps = MakeBands(speed, direction, origin).At(yaw);
+            if (!fps) fps = fallbackFPS == 250 ? 250 : 333;
+        }
+    } autoSector;
+    // Walk only the original copy of the bands, in the saved direction.
+    // Stop before any gap, or at the first boundary if Auto Para is alone.
+    float LimitAutoTurn(double yaw, float correction, int side, const AirBands& bands,
+                        int heldFPS, bool allowSwitch) {
+        if (!std::isfinite(correction) || side * correction >= 0.0f) return 0.0f;
+        const int initial = bands.At(yaw);
+        if (!initial || (!allowSwitch && initial != heldFPS)) return 0.0f;
+        const double distance = std::fabs(correction);
+        // Sample sub-degree steps, then bisect the first blocked interval.
+        // The original sector never wraps, even when crossing world yaw +/-180.
+        const int steps = static_cast<int>(std::ceil(distance / 0.025));
+        double accepted = 0.0;
+        const auto allowed = [&](double d) {
+            const int fps = bands.At(yaw - side * d);
+            return fps && (allowSwitch || fps == heldFPS);
+        };
         for (int i = 1; i <= steps; ++i) {
-            const float next = glm::min(distance, i * 0.05f);
-            const int fps = RestrictedZoneFPS(yaw - side * next, 127, 0, side, speed);
-            if (!fps || (!allowSwitch && fps != initial)) break;
+            const double next = glm::min(distance, i * 0.025);
+            if (!allowed(next)) {
+                double lo = accepted, hi = next;
+                for (int j = 0; j < 12; ++j) {
+                    const double mid = (lo + hi) * 0.5;
+                    if (allowed(mid)) lo = mid; else hi = mid;
+                }
+                // Leave a margin larger than the engine's short-angle quantization.
+                accepted = glm::max(0.0, lo - 0.012);
+                break;
+            }
             accepted = next;
         }
-        return -side * accepted;
+        return static_cast<float>(-side * accepted);
     }
 }
 
@@ -54,16 +117,14 @@ void cg::Mod_A_Strafebot()
     static DWORD lastGroundUpdate = 0;
     static float groundBlend = 0.0f;
     static int lastGroundSide = 0;
-    static int lastAirSide = 0;
     static DWORD lastAirUpdate = 0;
-    static DWORD airSwitchTime = 0;
     const auto resetGround = [&]() {
         lastGroundUpdate = 0;
         groundBlend = 0.0f;
         lastGroundSide = 0;
     };
 	if (r::inputCaptured || !v::mod_strafebot.isEnabled() || clients->snap.ps.pm_type == PM_UFO || v::mod_strafebot.isEnabled() && (GetAsyncKeyState(v::mod_strafebot_ow.GetInt()) < 0) == true)
-	{ automation.paraActive = false; automation.paraFPS = 0; automation.paraSide = 0; resetGround(); lastAirSide = 0; lastAirUpdate = 0; airSwitchTime = 0; return; }
+	{ automation.paraActive = false; automation.paraFPS = 0; automation.paraSide = 0; resetGround(); autoSector.Reset(); lastAirUpdate = 0; return; }
 
 	const usercmd_s* cmd = cinput->GetUserCmd(cinput->currentCmdNum - 1);
     if (!cmd) return;
@@ -84,22 +145,29 @@ void cg::Mod_A_Strafebot()
     if (!wHeld && !halfbeat) automation.paraSide = 0;
     const bool wOnly = airborne && forward == 127 && !leftHeld && !rightHeld;
     const bool para = wOnly && automation.paraSide != 0 && RestrictedAirMode();
-    const int priorParaFPS = automation.paraActive ? automation.paraFPS : 0;
     automation.paraActive = para;
-    automation.paraFPS = 0;
+    if (!para) { autoSector.Reset(); automation.paraFPS = 0; }
     if (!diagonalInput && !halfbeat && !para) {
         resetGround();
-        lastAirSide = 0; lastAirUpdate = 0; airSwitchTime = 0;
+        lastAirUpdate = 0;
         return;
     }
     // In a restricted air mode the angle solver must use the same limit as
     // the zone selector (never a stale 125/200 or an explicit override).
     if (RestrictedAirMode() && v::mod_autoFPS.isEnabled() && !automation.currentlySliding) {
-        int fps = RestrictedZoneFPS(clients->cgameViewangles[YAW], forward, sideMove,
-            automation.paraSide, clients->snap.ps.speed);
-        if (!fps) fps = 333;
+        const float yaw = clients->cgameViewangles[YAW];
+        auto* limit = Dvar_FindMalleableVar("com_maxfps");
+        const int fallbackFPS = limit && limit->current.integer == 250 ? 250 : 333;
+        int fps = RestrictedZoneFPS(yaw, forward, sideMove, automation.paraSide, clients->snap.ps.speed);
+        if (para && std::isfinite(yaw) && clients->snap.ps.speed > 0) {
+            if (!autoSector.active || autoSector.side != automation.paraSide)
+                autoSector.Begin(yaw, automation.paraSide, clients->snap.ps.speed, fallbackFPS);
+            fps = autoSector.fps;
+            automation.paraFPS = fps;
+        }
+        if (!fps) fps = fallbackFPS;
         jumpanalyzer.recommendedFPS = fps;
-        if (auto* limit = Dvar_FindMalleableVar("com_maxfps")) limit->current.integer = fps;
+        if (limit) limit->current.integer = fps;
     }
     if (NOT_GROUND)
         resetGround();
@@ -118,7 +186,7 @@ void cg::Mod_A_Strafebot()
     }
 
     if (GROUND) {
-        lastAirSide = 0; lastAirUpdate = 0; airSwitchTime = 0;
+        lastAirUpdate = 0;
         const DWORD now = Sys_MilliSeconds();
         const int side = automation.paraSide;
         if (!lastGroundUpdate || now - lastGroundUpdate > 100) {
@@ -135,9 +203,11 @@ void cg::Mod_A_Strafebot()
         groundBlend = glm::min(1.0f, groundBlend + dt / 0.15f);
         const float yaw = clients->cgameViewangles[YAW];
         const float error = AngleNormalize180(optYaw - yaw);
-        const float maxStep = (60.0f + 180.0f * groundBlend + (switched ? 180.0f : 0.0f)) * dt;
-        const float correction = glm::clamp(error * glm::min(1.0f, dt * 18.0f) * groundBlend,
-                                            -maxStep, maxStep);
+        // Keep only the original first-engagement ramp. Direction changes
+        // are immediate once the ground strafe is already active.
+        const float maxStep = (60.0f + 180.0f * groundBlend) * dt;
+        const float correction = switched || groundBlend >= 1.0f ? error :
+            glm::clamp(error * glm::min(1.0f, dt * 18.0f) * groundBlend, -maxStep, maxStep);
         clients->viewangles[YAW] += correction;
         return;
     }
@@ -145,42 +215,36 @@ void cg::Mod_A_Strafebot()
     const DWORD now = Sys_MilliSeconds();
     const int side = automation.paraSide;
     const bool continuous = lastAirUpdate && now - lastAirUpdate <= 100;
-    if (continuous && lastAirSide && side != lastAirSide)
-        airSwitchTime = now;
-    if (!continuous) airSwitchTime = 0;
     const float dt = continuous ? glm::clamp((now - lastAirUpdate) * 0.001f, 0.0f, 0.025f) : 0.003f;
     lastAirUpdate = now;
-    lastAirSide = side;
-    const float error = AngleNormalize180(optYaw - clients->cgameViewangles[YAW]);
+    const float yaw = clients->cgameViewangles[YAW];
+    const float error = AngleNormalize180(optYaw - yaw);
     if (para) {
+        if (!std::isfinite(yaw) || clients->snap.ps.speed <= 0) return;
         const bool allowSwitch = v::mod_auto_250.isEnabled();
-        // W-only has a different wish direction than WA/WD. Approach the
-        // target smoothly, and never snap 45 degrees on releasing A/D.
-        const float step = glm::clamp(error, -240.0f * dt, 240.0f * dt);
-        const float yaw = clients->cgameViewangles[YAW];
-        const int speed = clients->snap.ps.speed;
-        const float bounded = LimitAutoTurn(yaw, step, side, speed, allowSwitch);
+        if (!autoSector.active || autoSector.side != side) {
+            const auto* limit = Dvar_FindMalleableVar("com_maxfps");
+            autoSector.Begin(yaw, side, clients->snap.ps.speed, limit ? limit->current.integer : 333);
+        }
+        const double unwrapped = autoSector.Unwrap(yaw);
+        const auto bands = MakeBands(clients->snap.ps.speed, side, autoSector.origin);
+        // If the player or the server has moved outside the original sector,
+        // stop instead of acquiring a neighbouring sector or reversing.
+        const float step = glm::clamp(error, -360.0f * dt, 360.0f * dt);
+        const float bounded = LimitAutoTurn(unwrapped, step, side, bands, autoSector.fps, allowSwitch);
         clients->viewangles[YAW] += bounded;
-        automation.paraFPS = RestrictedZoneFPS(yaw + bounded, 127, 0, side, speed);
-        if (!automation.paraFPS) automation.paraFPS = 333;
-        if (allowSwitch && priorParaFPS == 333 && automation.paraFPS == 250)
-            ++automation.auto250Switches;
+        autoSector.lastYaw = unwrapped + bounded;
+        const int next = bands.At(autoSector.lastYaw);
+        if (next && (allowSwitch || next == autoSector.fps)) {
+            if (allowSwitch && autoSector.fps == 333 && next == 250) ++automation.auto250Switches;
+            autoSector.fps = next;
+        }
+        automation.paraFPS = autoSector.fps;
         return;
     }
-    const bool switching = airSwitchTime && now - airSwitchTime < 65;
-    const bool diagonal = forward > 0 && (sideMove != 0 || para);
-    const int sinceJump = jumpanalyzer.serverTime - jumpanalyzer.airTime;
-    const int sinceGround = jumpanalyzer.serverTime - jumpanalyzer.groundTime;
-    const float smoothing = glm::max(1.0f, (sinceJump >= 0 && sinceJump < 300 || sinceGround < 200)
-        ? v::mod_strafebot_bhop_s.GetFloat() : v::mod_strafebot_smooth.GetFloat());
-    // Fast shortest-arc correction during WA/WD reversal; normal smoothing otherwise.
-    const float alpha = switching ? 1.0f : (smoothing <= 1.0f ? 1.0f : 1.0f - powf(1.0f - 1.0f / smoothing, dt * 125.0f));
-    // A reversal must reach the new acceleration direction immediately.
-    // For ordinary diagonal tracking, keep the error within a small tolerance.
-    const float smoothed = error * alpha;
-    const float correction = diagonal && switching ? error : diagonal
-        ? error - glm::clamp(error - smoothed, -0.10f, 0.10f) : smoothed;
-    clients->viewangles[YAW] += correction;
+    // No configurable or time-dependent smoothing on manual air strafes.
+    // Apply the shortest correction in one update, including Halfbeat.
+    clients->viewangles[YAW] += error;
 
 }
 void cg::Mod_A_AutoFPS()
@@ -242,7 +306,8 @@ void cg::Mod_A_AutoFPS()
         const int forward = GetAsyncKeyState('W') < 0 ? 127 : 0;
         const int side = strafe ? (strafe > 0 ? 1 : -1) : automation.paraSide;
         const int zone = RestrictedZoneFPS(clients->cgameViewangles[YAW], forward, strafe, side, clients->snap.ps.speed);
-        fps = automation.paraActive && automation.paraFPS ? automation.paraFPS : (zone == 250 ? 250 : 333);
+        fps = automation.paraActive && automation.paraFPS ? automation.paraFPS :
+            (zone ? zone : (com_maxfps->current.integer == 250 ? 250 : 333));
         jumpanalyzer.recommendedFPS = fps;
     }
 	if (automation.currentlySliding && v::mod_autoslide.GetInt() == 2) fps = 15;
