@@ -15,6 +15,7 @@ namespace cg
 	void Mod_DrawEvents();
 
 	void Mod_DrawVelocity();
+	void Mod_DrawFPSLimit();
 	void Mod_DrawCoordinates();
 	void Mod_DrawSurfaceInfo();
 	void Mod_DrawVelocityDirection();

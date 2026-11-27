@@ -254,7 +254,7 @@ void Visual_Features()
 			if (ImGui::Checkbox("Show FPS", &v::mod_showFPS.evar->enabled)) {
 				v::mod_showFPS.SetValue(v::mod_showFPS.isEnabled());
 
-			} ImGui::SameLine(); r::MetricsHelpMarker("Draw recommended FPS");
+			} ImGui::SameLine(); r::MetricsHelpMarker("Show current FPS limit (com_maxfps), independent of the velocity HUD");
 
 			if (ImGui::Checkbox("horizontal bar", &v::mod_fps_transferz.evar->enabled)) {
 				float val = (float)v::mod_fps_transferz.evar->enabled;
@@ -597,7 +597,6 @@ void Jump_Features()
 
 void r::R_DrawMenuByName(const char* category, bool justPressed)
 {
-	ImGui::SameLine();
 	ImGui::BeginGroup();
 
 	if (!strcmp("Automation", category)) {
@@ -657,17 +656,10 @@ void r::R_Features()
 		return 0;
 	};
 		 
-	const float x = ImGui::GetWindowSize().x;
-	const float y = ImGui::GetWindowSize().y;
-	static ImVec2 childSize = ImVec2(250, y < 10 ? 400 : y - 30);
-
-	if (y < 10)
-		childSize.y = 400;
-	if (x < 100)
-		childSize.x = 400;
-
-	ImGui::BeginGroup();
-	ImGui::BeginChild("child##034", childSize, true, ImGuiWindowFlags_NoScrollbar);
+    const ImVec2 available = ImGui::GetContentRegionAvail();
+    const ImVec2 childSize(available.x * 0.24f, available.y);
+    ImGui::BeginGroup();
+    ImGui::BeginChild("child##034", childSize, true);
 
 	static int ActiveIndex(0);
 	
@@ -685,6 +677,8 @@ void r::R_Features()
 	const ImTextureID homeTex = FindTextureByName("Home.png");
 	if (!homeTex) {
 		fs::Log_Write(LOG_FATAL, "Unable to load image %s from %s\n", "Home.png", std::string(fs::GetExePath() + "\\1_kej\\images").c_str());
+		ImGui::EndChild();
+		ImGui::EndGroup();
 		return;
 	}
 	//Home page always @ the top instead of in alphabetical order
@@ -723,37 +717,15 @@ void r::R_Features()
 
 		}
 	}
-	ImGui::EndGroup();
-
-	static ImVec2 rect = ImGui::GetItemRectSize();
-	ImGui::EndChild();
-	
-	ImGui::SameLine();
-
-	ImGradient grad;
-	//grad.addMark(0, ImColor(0.10f, 0.09f, 0.12f, 1.00f));
-	grad.addMark(0.f, ImColor(255, 175, 0, 255/2));
-	grad.addMark(0.5f, ImColor(0.06f, 0.05f, 0.07f, 0.f));
-	grad.addMark(1.f, ImColor(0.06f, 0.05f, 0.07f, 0.f));
-
-	const ImVec2 sp = ImGui::GetCursorScreenPos();
-
-
-	ImGui::DrawGradientBar(&grad, ImVec2(sp.x-10, sp.y), 20, childSize.y);
-	ImGui::SameLine();  ImGui::Text(" ");
-	ImGui::SameLine();
-
-	std::string category = fs::removeFileExtension(r::imagePairs[ActiveIndex].first, 4);
-
-	R_DrawMenuByName(category.c_str(), justPressed);
-
-	childSize.x = rect.x + 10;
-	childSize.y = rect.y + 10;
-
-	if (!ImGui::GetCurrentWindow()->Active && (ImGui::GetWindowSize().x < 100 || ImGui::GetWindowSize().y < 100)) {
-		ImGui::SetWindowSize(ImVec2(400, 400));
-		ImGui::GetBackgroundDrawList()->AddText(ImVec2(0, 200), IM_COL32(255,0,0,255), "I guess it's kinda bugged atm so restart your game and let the developer know if this happens :-)");
-	}
+    ImGui::EndChild();
+    ImGui::EndGroup();
+    ImGui::SameLine();
+    ImGui::BeginChild("##static_tab_content", ImVec2(0, 0), false, ImGuiWindowFlags_HorizontalScrollbar);
+    if (ActiveIndex >= 0 && static_cast<size_t>(ActiveIndex) < r::imagePairs.size()) {
+        const std::string category = fs::removeFileExtension(r::imagePairs[ActiveIndex].first, 4);
+        R_DrawMenuByName(category.c_str(), justPressed);
+    }
+    ImGui::EndChild();
 }
 
 

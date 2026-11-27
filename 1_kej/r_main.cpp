@@ -63,6 +63,7 @@ void __cdecl r::CG_DrawActive()
 		}
 		
         Mod_DrawVelocity();
+        Mod_DrawFPSLimit();
 		if (vangle_que.yes && !r::inputCaptured) {
 
 			CG_SetPlayerAngles(vangle_que.src, vangle_que.dst);

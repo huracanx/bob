@@ -55,13 +55,7 @@ void cg::Mod_DrawVelocity()
 	}
 
 	char buffer[20];
-	if(!v::mod_showFPS.isEnabled() || clc.demoplaying && v::mod_showFPS.isEnabled())
-		sprintf_s(buffer, "%i", velocity);
-	else {
-		const auto* fps = Dvar_FindMalleableVar("com_maxfps");
-		if (fps) sprintf_s(buffer, "%i\n%i", velocity, fps->current.integer);
-		else sprintf_s(buffer, "%i\nN/A", velocity);
-	}
+	sprintf_s(buffer, "%i", velocity);
 
 	buffer[19] = '\0';
 	//r::R_DrawText(buffer, "fonts/normalfont", v::mod_velometer.evar->arrayValue[1], v::mod_velometer.evar->arrayValue[2], v::mod_velometer.evar->arrayValue[3], v::mod_velometer.evar->arrayValue[3], 0, (float*)&col, 1);
@@ -73,6 +67,27 @@ void cg::Mod_DrawVelocity()
 
 
 }
+void cg::Mod_DrawFPSLimit()
+{
+    if (!v::mod_showFPS.isEnabled())
+        return;
+
+    const auto* fps = Dvar_FindMalleableVar("com_maxfps");
+    char buffer[32];
+    if (fps)
+        sprintf_s(buffer, "FPS: %i", fps->current.integer);
+    else
+        sprintf_s(buffer, "FPS: N/A");
+
+    float color[4] = { 1.f, 1.f, 1.f, 1.f };
+    const float x = v::mod_velometer.GetArray(1);
+    const float y = v::mod_velometer.GetArray(2);
+    const float scale = v::mod_velometer.GetArray(3);
+    r::R_DrawText(buffer, "fonts/objectivefont", x,
+        y + (v::mod_velometer.isEnabled() ? 24.f * scale : 0.f),
+        scale, scale, 0.f, color, 0);
+}
+
 void cg::Mod_DrawCoordinates()
 {
 	if (!v::mod_coordinates.isEnabled())

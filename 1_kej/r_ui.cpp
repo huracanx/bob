@@ -284,10 +284,13 @@ bool r::R_OpenMenu(IDirect3DDevice9* pDevice)
 	if (r::should_draw_menu) {
 		
         R_MenuStyle();
-        ImGui::Begin("[ALPHA] 1_kej_v2 - github.com/kejjjjj/", &r::should_draw_menu, ImGuiWindowFlags_AlwaysAutoResize);
-        ImGui::SetWindowFontScale(1.2f);
         const ImGuiViewport* viewport = ImGui::GetMainViewport();
-        ImGui::SetWindowSize(ImVec2(viewport->Size.x / 3.f, viewport->Size.y / 3.5f), ImGuiCond_FirstUseEver);
+        const ImVec2 fixedSize((viewport->Size.x * 0.92f < 1000.0f ? viewport->Size.x * 0.92f : 1000.0f),
+                               (viewport->Size.y * 0.90f < 700.0f ? viewport->Size.y * 0.90f : 700.0f));
+        ImGui::SetNextWindowSize(fixedSize, ImGuiCond_Always);
+        ImGui::Begin("[ALPHA] 1_kej_v2 - github.com/kejjjjj/", &r::should_draw_menu,
+                     ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoScrollbar);
+        ImGui::SetWindowFontScale(1.2f);
         if (r::should_draw_menu) R_Features();
         ImGui::End();
         if (!r::should_draw_menu || ImGui::GetIO().KeysDownDuration[VK_ESCAPE] >= 0.0f) {

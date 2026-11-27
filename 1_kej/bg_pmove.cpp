@@ -17,26 +17,16 @@ void cg::PM_WalkMove(pmove_t* pm, pml_t* pml)
 	jumpanalyzer.frametime = pml->frametime;
 	jumpanalyzer.msec = pml->msec;
 
-	// Re-arm held jump only for grounded normal movement, before engine physics.
+    // Let the engine own jump timing and movement state.
     constexpr int jumpButton = 0x400;
     const int savedOldButtons = pm->oldcmd.buttons;
-    const int savedJumpTime = pm->ps->jumpTime;
-    const bool repeatJump = v::mod_bhop.isEnabled() && !r::inputCaptured &&
-        pml->walking && pm->ps->pm_type == PM_NORMAL &&
-        (pm->cmd.buttons & jumpButton) != 0;
-    bool bypassDelay = false;
-    if (repeatJump) {
+    if (v::mod_bhop.isEnabled() && !r::inputCaptured && pml->walking &&
+        pm->ps->groundEntityNum != ENTITYNUM_NONE && pm->ps->pm_type == PM_NORMAL &&
+        (pm->cmd.buttons & jumpButton)) {
         pm->oldcmd.buttons &= ~jumpButton;
-        bypassDelay = pm->cmd.serverTime - savedJumpTime < 500;
-        if (bypassDelay)
-            pm->ps->jumpTime = pm->cmd.serverTime - 500;
     }
     PM_WalkMove_f(pm, pml);
-    if (repeatJump) {
-        pm->oldcmd.buttons = savedOldButtons;
-        if (bypassDelay && pm->ps->jumpTime == pm->cmd.serverTime - 500)
-            pm->ps->jumpTime = savedJumpTime;
-    }
+    pm->oldcmd.buttons = savedOldButtons;
 	jumpanalyzer.walking = pml->walking;
 
 	Mod_A_AdjustRPG(pm, pml);
@@ -204,11 +194,20 @@ void cg::Pmove(pmove_t* pm)
 		}
 
 		pm->cmd.serverTime = pm->ps->commandTime + msec;
+        // Release jump during airborne physics; re-submit held input on landing.
+        constexpr int jumpButton = 0x400;
+        const int heldJump = pm->cmd.buttons & jumpButton;
+        const bool autoHop = heldJump && v::mod_bhop.isEnabled() &&
+            !r::inputCaptured && pm->ps->pm_type == PM_NORMAL;
+        if (autoHop && pm->ps->groundEntityNum == ENTITYNUM_NONE)
+            pm->cmd.buttons &= ~jumpButton;
 		PmoveSingle(pm);
 
 		//jumpanalyzer.commandTime = pm->ps->commandTime;
 		jumpanalyzer.serverTime = pm->cmd.serverTime;
 		memcpy(&pm->oldcmd, &pm->cmd, sizeof(pm->oldcmd));
+        if (autoHop)
+            pm->cmd.buttons = (pm->cmd.buttons & ~jumpButton) | heldJump;
 
 	}
 }
