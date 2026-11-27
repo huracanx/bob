@@ -135,9 +135,8 @@ void cg::CG_InitHooks()
 	a->install(&(PVOID&)PM_UFOMove_f, PM_UFOMove);
 	a->install(&(PVOID&)PM_Weapon_f, PM_Weapon);
 	a->install(&(PVOID&)r::CG_DrawActive_f, r::CG_DrawActive); 
-    bhopCommandCount = 0;
-    bhopJumpCount = 0;
-    bhopHookInstalled = a->install(&(PVOID&)Pmove_f, Pmove) == NO_ERROR;
+    pmoveHookInstalled = a->install(&(PVOID&)Pmove_f, Pmove) == NO_ERROR;
+    InstallBhopHook();
 	a->install(&(PVOID&)stub, Script_ScriptMenuResponse);
 	a->install(&(PVOID&)stub2, Script_OpenScriptMenu);
 	a->install(&(PVOID&)CG_CalcCrosshairColor_f, CG_CalcCrosshairColor);
@@ -183,8 +182,9 @@ void cg::CG_RemoveHooks()
 	a->remove(&(PVOID&)PM_UFOMove_f, PM_UFOMove);
 	a->remove(&(PVOID&)PM_Weapon_f, PM_Weapon);
 	a->remove(&(PVOID&)r::CG_DrawActive_f, r::CG_DrawActive);
-    if (bhopHookInstalled && a->remove(&(PVOID&)Pmove_f, Pmove) == NO_ERROR)
-        bhopHookInstalled = false;
+    RemoveBhopHook();
+    if (pmoveHookInstalled && a->remove(&(PVOID&)Pmove_f, Pmove) == NO_ERROR)
+        pmoveHookInstalled = false;
 	a->remove(&(PVOID&)stub, Script_ScriptMenuResponse);
 	a->remove(&(PVOID&)stub2, Script_OpenScriptMenu);
 	a->remove(&(PVOID&)CG_CalcCrosshairColor_f, CG_CalcCrosshairColor);

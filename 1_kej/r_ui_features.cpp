@@ -527,8 +527,9 @@ void Jump_Features()
 
 
         if (v::mod_bhop.isEnabled()) {
-            ImGui::Text("Bhop Pmove hook: %s", cg::bhopHookInstalled ? "installed" : "unavailable");
+            ImGui::Text("Bhop command hook: %s", cg::bhopHookInstalled ? "installed" : "unavailable");
             ImGui::Text("Commands: %lu | Jump requests: %lu", cg::bhopCommandCount, cg::bhopJumpCount);
+            ImGui::Text("Address: %08lX | Status: %ld", cg::bhopHookAddress, cg::bhopHookError);
         }
 
 		if (ImGui::Checkbox("Disallow halfbeat", &v::mod_disallow_hb.evar->enabled)) {

@@ -88,3 +88,80 @@ int cg::GetKeyBinding(const char* command)
 	return 0;
 }
 
+
+// IW3SR Movements::Bhop (GPL-3.0), adapted for the outgoing command.
+// Never modify a prediction-only pmove command or the player's physics state.
+void __cdecl cg::CL_FinishMove(usercmd_s* cmd)
+{
+    CL_FinishMove_f(cmd);
+    ++bhopCommandCount;
+    if (!cmd || !v::mod_bhop.evar || !v::mod_bhop.isEnabled() ||
+        r::inputCaptured || clc.demoplaying || !(GetAsyncKeyState(VK_SPACE) & 0x8000))
+        return;
+    const auto& ps = cgs->predictedPlayerState;
+    if (ps.pm_type != PM_NORMAL || (ps.pm_flags & (PMF_MANTLE | PMF_LADDER | PMF_DUCKED | PMF_PRONE)) ||
+        (ps.mantleState.flags & 8))
+        return;
+    constexpr int jump = 1 << 10;
+    if (ps.groundEntityNum != ENTITYNUM_NONE &&
+        static_cast<long long>(cmd->serverTime) - ps.jumpTime >= 500)
+    {
+        cmd->buttons |= jump;
+        ++bhopJumpCount;
+    }
+    else
+        cmd->buttons &= ~jump;
+}
+
+static bool IsExecutableEntry(DWORD addr)
+{
+    MEMORY_BASIC_INFORMATION info{};
+    if (!addr || !VirtualQuery(reinterpret_cast<void*>(addr), &info, sizeof(info)) ||
+        info.State != MEM_COMMIT || (info.Protect & PAGE_GUARD))
+        return false;
+    const DWORD prot = info.Protect & 0xff;
+    if (prot != PAGE_EXECUTE_READ && prot != PAGE_EXECUTE_READWRITE && prot != PAGE_EXECUTE_WRITECOPY)
+        return false;
+    const BYTE first = *reinterpret_cast<const BYTE*>(addr);
+    // Reject empty, breakpoint and immediate-return entries.
+    return first != 0 && first != 0xcc && first != 0xc3 && first != 0xc2;
+}
+
+void cg::InstallBhopHook()
+{
+    if (bhopHookInstalled) return;
+    bhopCommandCount = bhopJumpCount = 0;
+    bhopHookAddress = 0;
+    bhopHookError = ERROR_NOT_FOUND;
+    hook h;
+    // The uploaded IW3SR supports CoD4X >=21.3. Its DLL signature may not
+    // exist in 21.1. Try the documented original IW3 entry as a fallback.
+    const DWORD candidate = GetModuleHandleA("cod4x_021.dll")
+        ? static_cast<DWORD>(h.find_pattern("cod4x_021.dll", "?? ?? ?? ?? ?? 15 ?? ?? ?? ?? 8B 44 24 10 88 50 14 8B 15")) : 0;
+    const DWORD addresses[] = { candidate, 0x463A60 };
+    for (DWORD addr : addresses)
+    {
+        if (!IsExecutableEntry(addr)) continue;
+        CL_FinishMove_f = reinterpret_cast<decltype(CL_FinishMove_f)>(addr);
+        bhopHookError = h.install(reinterpret_cast<PVOID*>(&CL_FinishMove_f), CL_FinishMove);
+        if (bhopHookError == NO_ERROR)
+        {
+            bhopHookAddress = addr;
+            bhopHookInstalled = true;
+            break;
+        }
+        CL_FinishMove_f = nullptr;
+    }
+}
+
+void cg::RemoveBhopHook()
+{
+    if (!bhopHookInstalled) return;
+    hook h;
+    if (h.remove(reinterpret_cast<PVOID*>(&CL_FinishMove_f), CL_FinishMove) == NO_ERROR)
+    {
+        bhopHookInstalled = false;
+        CL_FinishMove_f = nullptr;
+        bhopHookAddress = 0;
+    }
+}

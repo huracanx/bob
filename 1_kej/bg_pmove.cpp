@@ -137,32 +137,6 @@ void cg::PM_Weapon(pml_t* pmll, pmove_t* pmm)
 
 	return;
 }
-// Adapted from IW3SR Movements::Bhop; see IW3SR_PORT.txt.
-// Apply only to the local player's prediction, before each simulation step.
-static void ApplyHeldJump(cg::pmove_t* pm)
-{
-    using namespace cg;
-    if (pm->ps != &cgs->predictedPlayerState)
-        return;
-    ++bhopCommandCount;
-    if (!v::mod_bhop.evar || !v::mod_bhop.isEnabled() || r::inputCaptured ||
-        clc.demoplaying || !(GetAsyncKeyState(VK_SPACE) & 0x8000))
-        return;
-    auto* ps = pm->ps;
-    if (ps->pm_type != PM_NORMAL || (ps->pm_flags & (PMF_MANTLE | PMF_LADDER)) ||
-        (ps->mantleState.flags & 8))
-        return;
-    constexpr int jump = 1 << 10;
-    if (ps->groundEntityNum != ENTITYNUM_NONE &&
-        static_cast<long long>(pm->cmd.serverTime) - ps->jumpTime >= 500)
-    {
-        pm->cmd.buttons |= jump;
-        ++bhopJumpCount;
-    }
-    else
-        pm->cmd.buttons &= ~jump;
-}
-
 void cg::Pmove(pmove_t* pm)
 {
 
@@ -211,7 +185,6 @@ void cg::Pmove(pmove_t* pm)
 		}
 
 		pm->cmd.serverTime = pm->ps->commandTime + msec;
-		ApplyHeldJump(pm);
 		PmoveSingle(pm);
 
 		//jumpanalyzer.commandTime = pm->ps->commandTime;
