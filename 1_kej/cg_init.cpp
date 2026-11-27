@@ -76,7 +76,6 @@ void cg::CG_PrepareHooks()
 
 	r::R_DrawXModelSkinnedCached_h  = (HRESULT(*)(cg::GfxCmdBufSourceState*, cg::GfxCmdBufState*, cg::GfxModelSkinnedSurface*))	(0x646870);
 
-	r::Material_Register_FastFile_f	= (XAssetHeader(*)(const char* name))														(0x5F2A80);
 
 	CM_IsEdgeWalkable_f				= (void(*)())													(0x4EFCD5);
 
@@ -151,7 +150,6 @@ void cg::CG_InitHooks()
 	a->install(&(PVOID&)PM_BounceSteepness_f, PM_BounceSteepness);
 	a->install(&(PVOID&)r::RB_DrawDebug_f, r::RB_DrawDebug);
 
-	//a->install(&(PVOID&)r::Material_Register_FastFile_f, r::Material_Register_FastFile);
 
 	Com_Printf(CON_CHANNEL_CONSOLEONLY, " done!\n");
 
