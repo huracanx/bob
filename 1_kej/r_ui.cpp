@@ -95,8 +95,8 @@ void r::R_MenuStyle(float transparencyScale)
     ImGui::StyleColorsDark();
     ImGuiStyle& st = ImGui::GetStyle();
     st.Alpha = transparencyScale;
-    st.WindowPadding = ImVec2(8,10); st.FramePadding = ImVec2(8,4);
-    st.ItemSpacing = ImVec2(8,8); st.WindowRounding=10; st.ChildRounding=6;
+    st.WindowPadding = ImVec2(8,10); st.FramePadding = ImVec2(9,5);
+    st.ItemSpacing = ImVec2(9,9); st.WindowRounding=10; st.ChildRounding=6;
     st.FrameRounding=4; st.GrabRounding=4; st.ScrollbarRounding=4; st.ScrollbarSize=5;
     st.WindowBorderSize=1; st.ChildBorderSize=1; st.FrameBorderSize=1;
     auto* c=st.Colors;
@@ -104,7 +104,7 @@ void r::R_MenuStyle(float transparencyScale)
     c[ImGuiCol_ChildBg]=ImVec4(.125f,.125f,.125f,1);
     c[ImGuiCol_Border]=ImVec4(.21f,.21f,.21f,1);
     c[ImGuiCol_FrameBg]=ImVec4(.115f,.115f,.115f,1);
-    c[ImGuiCol_FrameBgHovered]=c[ImGuiCol_HeaderHovered]=ImVec4(.19f,.17f,.18f,1);
+    c[ImGuiCol_FrameBgHovered]=c[ImGuiCol_HeaderHovered]=ImVec4(.24f,.19f,.21f,1);
     c[ImGuiCol_FrameBgActive]=c[ImGuiCol_HeaderActive]=ImVec4(.27f,.22f,.24f,1);
     c[ImGuiCol_Header]=c[ImGuiCol_Button]=ImVec4(.16f,.16f,.16f,1);
     c[ImGuiCol_ButtonHovered]=c[ImGuiCol_HeaderHovered]; c[ImGuiCol_ButtonActive]=c[ImGuiCol_HeaderActive];
@@ -229,7 +229,7 @@ bool r::R_OpenMenu(IDirect3DDevice9* pDevice)
         ImGui::Begin("[ALPHA] 1_kej_v2 - github.com/kejjjjj/", &r::should_draw_menu,
                      ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoTitleBar);
         ImGui::PopStyleVar();
-        ImGui::SetWindowFontScale(1.0f);
+        ImGui::SetWindowFontScale(1.12f);
         if (r::should_draw_menu) R_Features();
         ImGui::End();
         if (!r::should_draw_menu || ImGui::GetIO().KeysDownDuration[VK_ESCAPE] >= 0.0f) {

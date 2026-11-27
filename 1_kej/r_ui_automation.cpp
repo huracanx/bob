@@ -24,19 +24,19 @@ void r::R_Automation_Features()
     static bool editOverwrite=false, editSlide=false;
     if (ImGui::BeginTable("##automation_columns", 2, ImGuiTableFlags_SizingStretchSame)) {
         ImGui::TableNextColumn();
-        BeginPanel("##strafe_card", "Strafing", 340);
+        BeginPanel("##strafe_card", "Strafing", 390);
         Toggle("Strafebot", v::mod_strafebot);
         Toggle("Auto Para", v::mod_auto_para);
         Toggle("Auto 250 Switch", v::mod_auto_250);
-        Toggle("Halfbeat", v::mod_halfbeat);
-        ImGui::TextDisabled("%s | 250 entries: %u", automation.paraActive ? (automation.paraSide > 0 ? "Auto right" : "Auto left") : "Manual / idle", automation.auto250Switches);
-        Toggle("All techniques", v::mod_strafebot_all);
+        Toggle("Halfbeat (A/D)", v::mod_halfbeat);
+        ImGui::TextDisabled("%s | 250 switches: %u", automation.paraActive ? (automation.paraSide > 0 ? "Auto right" : "Auto left") : "Manual / idle", automation.auto250Switches);
+        ImGui::TextDisabled("Default: WA / WD only");
         Toggle("Engine acceleration", v::mod_strafebot_accel);
         ImGui::SetNextItemWidth(105); ImGui::DragFloat("Smoothing", &v::mod_strafebot_smooth.evar->floatValue, .5f,1,45,"%.2f");
         ImGui::SetNextItemWidth(105); ImGui::DragFloat("Bhop smoothing", &v::mod_strafebot_bhop_s.evar->floatValue, .5f,1,100,"%.2f");
         Bind("Bind overwrite", v::mod_strafebot_ow, editOverwrite);
         EndPanel();
-        BeginPanel("##slide_card", "Edge Slide", 160);
+        BeginPanel("##slide_card", "Edge Slide", 190);
         const char* modes[]={"Off","Engine Slide","FPS Slide"};
         int mode=glm::clamp(v::mod_autoslide.GetInt(),0,2);
         ImGui::SetNextItemWidth(150); if (ImGui::Combo("Mode", &mode,modes,3)) v::mod_autoslide.SetValue(static_cast<float>(mode));
@@ -45,16 +45,20 @@ void r::R_Automation_Features()
         ImGui::TextWrapped("Arm before landing. Press again to cancel.");
         EndPanel();
         ImGui::TableNextColumn();
-        BeginPanel("##fps_card", "AutoFPS", 210);
+        BeginPanel("##fps_card", "AutoFPS", 245);
         Toggle("AutoFPS", v::mod_autoFPS);
+        const bool restricted = v::mod_auto_para.isEnabled() || v::mod_auto_250.isEnabled();
+        ImGui::BeginDisabled(restricted);
         Toggle("Long 125", v::mod_autoFPS_long125);
         const int limits[]={0,166,142,111}; const char* names[]={"Automatic zones","166","142","111"};
         int selected=0; for(int i=1;i<4;++i) if(v::mod_fps_override.GetInt()==limits[i]) selected=i;
         ImGui::SetNextItemWidth(148); if(ImGui::Combo("Air FPS",&selected,names,4)) v::mod_fps_override.SetValue(static_cast<float>(limits[selected]));
         const char* hug[]={"Disabled","333","500","1000"};
         ImGui::SetNextItemWidth(148); if(ImGui::Combo("Bounce FPS",&v::mod_autoFPS_hug500.evar->intValue,hug,4)) v::mod_autoFPS_hug500.SetValue(static_cast<float>(v::mod_autoFPS_hug500.GetInt()));
+        ImGui::EndDisabled();
+        if (restricted) ImGui::TextDisabled("Air: 250 / 333 only");
         EndPanel();
-        BeginPanel("##500_card", "500 FPS area", 174);
+        BeginPanel("##500_card", "500 FPS area", 200);
         Toggle("Enable spawning",v::mod_auto500_enabled);
         if (!v::mod_auto500_enabled.isEnabled()) { box500.boxExists=false; box500.use500=false; }
         ImGui::BeginDisabled(!box500.boxExists);
@@ -63,7 +67,7 @@ void r::R_Automation_Features()
         ImGui::SetNextItemWidth(125); ImGui::DragFloat("Z bounds", &box500.bounds[2],4,0,10000,"%.2f");
         if(ImGui::Button("Delete area")) { memset(&box500,0,sizeof(area500_s)); box500.bounds[0]=box500.bounds[1]=box500.bounds[2]=32; }
         ImGui::EndDisabled(); EndPanel();
-        BeginPanel("##rpg_card", "RPG", 76); Toggle("RPG lookdown",v::mod_autoanglerpg); EndPanel();
+        BeginPanel("##rpg_card", "RPG", 88); Toggle("RPG lookdown",v::mod_autoanglerpg); EndPanel();
         ImGui::EndTable();
     }
 }

@@ -667,6 +667,19 @@ bool ImGui::ButtonBehavior(const ImRect& bb, ImGuiID id, bool* out_hovered, bool
     return pressed;
 }
 
+// Subtle layered outline for hovered menu controls. Does not affect hitboxes.
+static void BobHoverGlow(ImDrawList* draw, const ImRect& bb, float rounding)
+{
+    for (int i = 3; i >= 1; --i)
+    {
+        const float pad = static_cast<float>(i);
+        const float alpha = 0.10f + (3 - i) * 0.07f;
+        draw->AddRect(bb.Min - ImVec2(pad, pad), bb.Max + ImVec2(pad, pad),
+            ImGui::GetColorU32(ImVec4(0.85f, 0.60f, 0.70f, alpha)), rounding + pad, 0, 1.0f);
+    }
+    draw->AddRect(bb.Min, bb.Max, ImGui::GetColorU32(ImVec4(0.85f, 0.60f, 0.70f, 0.65f)), rounding, 0, 1.0f);
+}
+
 bool ImGui::ButtonEx(const char* label, const ImVec2& size_arg, ImGuiButtonFlags flags)
 {
     ImGuiWindow* window = GetCurrentWindow();
@@ -698,6 +711,7 @@ bool ImGui::ButtonEx(const char* label, const ImVec2& size_arg, ImGuiButtonFlags
     const ImU32 col = GetColorU32((held && hovered) ? ImGuiCol_ButtonActive : hovered ? ImGuiCol_ButtonHovered : ImGuiCol_Button);
     RenderNavHighlight(bb, id);
     RenderFrame(bb.Min, bb.Max, col, true, style.FrameRounding);
+    if (hovered) BobHoverGlow(window->DrawList, bb, style.FrameRounding);
 
     if (g.LogEnabled)
         LogSetNextTextDecoration("[", "]");
@@ -1100,6 +1114,7 @@ bool ImGui::Checkbox(const char* label, bool* v)
     RenderNavHighlight(total_bb, id);
     RenderFrame(check_bb.Min, check_bb.Max, GetColorU32((held && hovered) ? ImGuiCol_FrameBgActive : hovered ? ImGuiCol_FrameBgHovered : ImGuiCol_FrameBg), true, style.FrameRounding);
     ImU32 check_col = GetColorU32(ImGuiCol_CheckMark);
+    if (hovered) BobHoverGlow(window->DrawList, total_bb, style.FrameRounding);
     bool mixed_value = (g.LastItemData.InFlags & ImGuiItemFlags_MixedValue) != 0;
     if (mixed_value)
     {
@@ -1606,6 +1621,7 @@ bool ImGui::BeginCombo(const char* label, const char* preview_value, ImGuiComboF
             RenderArrow(window->DrawList, ImVec2(value_x2 + style.FramePadding.y, bb.Min.y + style.FramePadding.y), text_col, ImGuiDir_Down, 1.0f);
     }
     RenderFrameBorder(bb.Min, bb.Max, style.FrameRounding);
+    if (hovered) BobHoverGlow(window->DrawList, bb, style.FrameRounding);
 
     // Custom preview
     if (flags & ImGuiComboFlags_CustomPreview)
@@ -2442,6 +2458,7 @@ bool ImGui::DragScalar(const char* label, ImGuiDataType data_type, void* p_data,
     const ImU32 frame_col = GetColorU32(g.ActiveId == id ? ImGuiCol_FrameBgActive : hovered ? ImGuiCol_FrameBgHovered : ImGuiCol_FrameBg);
     RenderNavHighlight(frame_bb, id);
     RenderFrame(frame_bb.Min, frame_bb.Max, frame_col, true, style.FrameRounding);
+    if (hovered) BobHoverGlow(window->DrawList, frame_bb, style.FrameRounding);
 
     // Drag behavior
     const bool value_changed = DragBehavior(id, data_type, p_data, v_speed, p_min, p_max, format, flags);
@@ -3049,6 +3066,7 @@ bool ImGui::SliderScalar(const char* label, ImGuiDataType data_type, void* p_dat
     const ImU32 frame_col = GetColorU32(g.ActiveId == id ? ImGuiCol_FrameBgActive : hovered ? ImGuiCol_FrameBgHovered : ImGuiCol_FrameBg);
     RenderNavHighlight(frame_bb, id);
     RenderFrame(frame_bb.Min, frame_bb.Max, frame_col, true, g.Style.FrameRounding);
+    if (hovered) BobHoverGlow(window->DrawList, frame_bb, style.FrameRounding);
 
     // Slider behavior
     ImRect grab_bb;

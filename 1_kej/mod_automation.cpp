@@ -1,5 +1,54 @@
 #include "pch.h"
 
+namespace {
+    // Same 90-degree periodic coordinates as the FPS transfer bar. Keep the
+    // restricted modes independent of its projection, Long 125, and overrides.
+    double ZonePhase(double angle) {
+        const double phase = std::fmod(angle, 90.0);
+        return phase < 0.0 ? phase + 90.0 : phase;
+    }
+    bool InZone(double phase, double start, double length) {
+        return length > 0.0 && ZonePhase(phase - start) < length;
+    }
+    int RestrictedZoneFPS(float yaw, int forward, int strafe, int side, int speed) {
+        if (!std::isfinite(yaw) || speed <= 0 || side == 0) return 0;
+        double aa = std::atan2(-static_cast<double>(strafe), static_cast<double>(forward)) * 57.29577951308232;
+        aa += side > 0 ? 45.0 : -45.0;
+        const double phase = ZonePhase(static_cast<double>(yaw) + aa);
+        // Derive ordinary (not Long 125) zones from the same speed equations
+        // as PM_Accelerate. 333 takes priority over overlapping 250.
+        const float edge333 = roundf(speed / 3.0f) + 10.0f;
+        const float len333 = 2.0f * edge333 - 90.0f;
+        const float edge250 = roundf(speed / 4.0f) + 10.0f;
+        const float len250 = 2.0f * edge250 - 96.0f;
+        float start250 = 3.0f * edge250 - 101.0f;
+        if (side > 0) start250 = 180.0f - start250 - len250;
+        if (InZone(phase, 90.0f - edge333, len333)) return 333;
+        if (InZone(phase, start250, len250)) return 250;
+        return 0;
+    }
+    bool RestrictedAirMode() {
+        return v::mod_strafebot.isEnabled() && NOT_GROUND && !jumpanalyzer.walking &&
+            (v::mod_auto_para.isEnabled() || v::mod_auto_250.isEnabled());
+    }
+    // Check the entire requested turn, not merely its endpoint. No jumping
+    // across a forbidden interval or turning back against the saved side.
+    float LimitAutoTurn(float yaw, float correction, int side, int speed, bool allowSwitch) {
+        const int initial = RestrictedZoneFPS(yaw, 127, 0, side, speed);
+        if (!initial || side * correction >= 0.0f) return 0.0f;
+        const float distance = fabsf(correction);
+        float accepted = 0.0f;
+        const int steps = static_cast<int>(ceilf(distance / 0.05f));
+        for (int i = 1; i <= steps; ++i) {
+            const float next = glm::min(distance, i * 0.05f);
+            const int fps = RestrictedZoneFPS(yaw - side * next, 127, 0, side, speed);
+            if (!fps || (!allowSwitch && fps != initial)) break;
+            accepted = next;
+        }
+        return -side * accepted;
+    }
+}
+
 void cg::Mod_A_Strafebot()
 {
     static DWORD lastGroundUpdate = 0;
@@ -14,36 +63,43 @@ void cg::Mod_A_Strafebot()
         lastGroundSide = 0;
     };
 	if (r::inputCaptured || !v::mod_strafebot.isEnabled() || clients->snap.ps.pm_type == PM_UFO || v::mod_strafebot.isEnabled() && (GetAsyncKeyState(v::mod_strafebot_ow.GetInt()) < 0) == true)
-	{ automation.paraActive = false; resetGround(); lastAirSide = 0; lastAirUpdate = 0; airSwitchTime = 0; return; }
+	{ automation.paraActive = false; automation.paraFPS = 0; automation.paraSide = 0; resetGround(); lastAirSide = 0; lastAirUpdate = 0; airSwitchTime = 0; return; }
 
 	const usercmd_s* cmd = cinput->GetUserCmd(cinput->currentCmdNum - 1);
     if (!cmd) return;
-    // Live movement input is used for air WA/WD; ground keeps its existing path.
-    const char forward = input->move;
+    // Use live keys for the mode gate; the old command may be one frame behind.
     const bool leftHeld = GetAsyncKeyState('A') < 0;
     const bool rightHeld = GetAsyncKeyState('D') < 0;
     const bool airborne = NOT_GROUND && !jumpanalyzer.walking;
-    const bool wOnly = airborne && forward > 0 && !leftHeld && !rightHeld && input->strafe == 0;
-    const char sideMove = leftHeld != rightHeld ? (rightHeld ? 127 : -127) : input->strafe;
-    if (sideMove != 0) automation.paraSide = sideMove > 0 ? 1 : -1;
-    static bool was250 = false;
-    const bool auto250 = wOnly && v::mod_auto_250.isEnabled() && v::mod_autoFPS.isEnabled() &&
-        v::mod_fps_override.GetInt() == 0;
-    const int zone = auto250 ? Mod_RecommendedFPS(AngleNormalize180(clients->cgameViewangles[YAW]), forward, 0) : 0;
-    const bool in250 = auto250 && zone == 250;
-    if (in250 && !was250) ++automation.auto250Switches;
-    was250 = in250;
-    // Retain the last manually chosen direction; entering a zone must not reverse it.
-    const bool para = wOnly && (v::mod_auto_para.isEnabled() || auto250);
+    const bool wHeld = GetAsyncKeyState('W') < 0;
+    const bool sHeld = GetAsyncKeyState('S') < 0;
+    // Read the actual keys, not the previous movement byte, when deciding
+    // whether a key combination is allowed. A/D alone is Halfbeat only.
+    const char forward = wHeld != sHeld ? (wHeld ? 127 : -127) : 0;
+    const char sideMove = leftHeld != rightHeld ? (rightHeld ? 127 : -127) : 0;
+    const bool diagonalInput = forward == 127 && sideMove != 0;
+    const bool halfbeat = airborne && v::mod_halfbeat.isEnabled() && !wHeld && !sHeld && sideMove != 0;
+    if (diagonalInput || halfbeat) automation.paraSide = sideMove > 0 ? 1 : -1;
+    if (!airborne && !diagonalInput) automation.paraSide = 0;
+    if (!wHeld && !halfbeat) automation.paraSide = 0;
+    const bool wOnly = airborne && forward == 127 && !leftHeld && !rightHeld;
+    const bool para = wOnly && automation.paraSide != 0 && RestrictedAirMode();
+    const int priorParaFPS = automation.paraActive ? automation.paraFPS : 0;
     automation.paraActive = para;
-    const bool halfbeat = airborne && v::mod_halfbeat.isEnabled() && sideMove != 0 && forward == 0;
-
-    // WA/WD is the basic ground mode. It must not depend on the separate
-    // "All Techniques" option; that option remains relevant to other patterns.
-    if ((!para && sideMove == 0) || (GROUND && forward <= 0)) {
+    automation.paraFPS = 0;
+    if (!diagonalInput && !halfbeat && !para) {
         resetGround();
-        if (GROUND) { lastAirSide = 0; lastAirUpdate = 0; airSwitchTime = 0; }
+        lastAirSide = 0; lastAirUpdate = 0; airSwitchTime = 0;
         return;
+    }
+    // In a restricted air mode the angle solver must use the same limit as
+    // the zone selector (never a stale 125/200 or an explicit override).
+    if (RestrictedAirMode() && v::mod_autoFPS.isEnabled() && !automation.currentlySliding) {
+        int fps = RestrictedZoneFPS(clients->cgameViewangles[YAW], forward, sideMove,
+            automation.paraSide, clients->snap.ps.speed);
+        if (!fps) fps = 333;
+        jumpanalyzer.recommendedFPS = fps;
+        if (auto* limit = Dvar_FindMalleableVar("com_maxfps")) limit->current.integer = fps;
     }
     if (NOT_GROUND)
         resetGround();
@@ -55,7 +111,7 @@ void cg::Mod_A_Strafebot()
 	else if (clients->viewangles[YAW] > 3000 || clients->viewangles[YAW] < -3000)
 		clients->viewangles[YAW] = fmodf(clients->viewangles[YAW], 360);
 
-	optYaw = getOptAngle(test, v::mod_strafebot_all.isEnabled() || halfbeat, forward, sideMove);
+	optYaw = getOptAngle(test, halfbeat, forward, sideMove);
 	if (optYaw == -400.f || !std::isfinite(optYaw)) {
         resetGround();
         return;
@@ -96,6 +152,21 @@ void cg::Mod_A_Strafebot()
     lastAirUpdate = now;
     lastAirSide = side;
     const float error = AngleNormalize180(optYaw - clients->cgameViewangles[YAW]);
+    if (para) {
+        const bool allowSwitch = v::mod_auto_250.isEnabled();
+        // W-only has a different wish direction than WA/WD. Approach the
+        // target smoothly, and never snap 45 degrees on releasing A/D.
+        const float step = glm::clamp(error, -240.0f * dt, 240.0f * dt);
+        const float yaw = clients->cgameViewangles[YAW];
+        const int speed = clients->snap.ps.speed;
+        const float bounded = LimitAutoTurn(yaw, step, side, speed, allowSwitch);
+        clients->viewangles[YAW] += bounded;
+        automation.paraFPS = RestrictedZoneFPS(yaw + bounded, 127, 0, side, speed);
+        if (!automation.paraFPS) automation.paraFPS = 333;
+        if (allowSwitch && priorParaFPS == 333 && automation.paraFPS == 250)
+            ++automation.auto250Switches;
+        return;
+    }
     const bool switching = airSwitchTime && now - airSwitchTime < 65;
     const bool diagonal = forward > 0 && (sideMove != 0 || para);
     const int sinceJump = jumpanalyzer.serverTime - jumpanalyzer.airTime;
@@ -155,7 +226,7 @@ void cg::Mod_A_AutoFPS()
 		}
 	}
 
-	// box500 - highest priority. Overrides everything else when inside the zone.
+	// box500 overrides ordinary AutoFPS; the restricted air modes take precedence.
 	if (box500.use500) {
 		fps = 500;
 	}
@@ -164,6 +235,16 @@ void cg::Mod_A_AutoFPS()
 	if (v::mod_autoFPS.isEnabled() && !box500.use500 && GROUND)
 		fps = spaceHeld ? 125 : 333;
 
+    if (v::mod_autoFPS.isEnabled() && RestrictedAirMode() && !r::inputCaptured) {
+        const bool left = GetAsyncKeyState('A') < 0;
+        const bool right = GetAsyncKeyState('D') < 0;
+        const int strafe = left != right ? (right ? 127 : -127) : 0;
+        const int forward = GetAsyncKeyState('W') < 0 ? 127 : 0;
+        const int side = strafe ? (strafe > 0 ? 1 : -1) : automation.paraSide;
+        const int zone = RestrictedZoneFPS(clients->cgameViewangles[YAW], forward, strafe, side, clients->snap.ps.speed);
+        fps = automation.paraActive && automation.paraFPS ? automation.paraFPS : (zone == 250 ? 250 : 333);
+        jumpanalyzer.recommendedFPS = fps;
+    }
 	if (automation.currentlySliding && v::mod_autoslide.GetInt() == 2) fps = 15;
     com_maxfps->current.integer = fps;
 }

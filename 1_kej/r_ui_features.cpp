@@ -655,17 +655,17 @@ void r::R_Features()
 {
     static int active = 0;
     const char* pages[] = { "Automation", "Jumping", "Rpg", "Visuals", "Map", "Home" };
-    ImGui::BeginChild("##sidebar", ImVec2(180, 0), false, ImGuiWindowFlags_NoScrollbar);
+    ImGui::BeginChild("##sidebar", ImVec2(206, 0), false);
     ImDrawList* draw = ImGui::GetWindowDrawList();
     const ImVec2 origin = ImGui::GetWindowPos();
     const ImVec2 extent = ImGui::GetWindowSize();
     draw->AddRectFilled(origin, ImVec2(origin.x+extent.x,origin.y+extent.y), IM_COL32(32,32,32,255));
-    draw->AddLine(ImVec2(origin.x+179,origin.y),ImVec2(origin.x+179,origin.y+extent.y),IM_COL32(53,53,53,255));
+    draw->AddLine(ImVec2(origin.x+205,origin.y),ImVec2(origin.x+205,origin.y+extent.y),IM_COL32(53,53,53,255));
     ImGui::SetCursorPos(ImVec2(24,14));
     ImGui::SetWindowFontScale(2.0f);
     ImGui::TextColored(ImVec4(.70f,.56f,.60f,1), "BOB");
-    ImGui::SetWindowFontScale(1.0f);
-    ImGui::SetCursorPosY(88);
+    ImGui::SetWindowFontScale(1.16f);
+    ImGui::SetCursorPosY(92);
     for (int i=0; i<6; ++i) {
         if (i==0 || i==3 || i==5) {
             ImGui::SetCursorPosX(12);
@@ -673,34 +673,37 @@ void r::R_Features()
         }
         ImGui::SetCursorPosX(12);
         ImGui::PushID(i);
-        ImGui::PushStyleColor(ImGuiCol_Text, active==i ? IM_COL32(245,245,245,255) : IM_COL32(115,115,115,255));
+        const ImVec2 buttonStart = ImGui::GetCursorScreenPos();
+        const bool over = ImGui::IsMouseHoveringRect(buttonStart, ImVec2(buttonStart.x+182, buttonStart.y+38));
+        ImGui::PushStyleColor(ImGuiCol_Text, active==i || over ? IM_COL32(245,235,239,255) : IM_COL32(145,145,145,255));
         ImGui::PushStyleColor(ImGuiCol_Button, active==i ? IM_COL32(43,43,43,255) : IM_COL32(32,32,32,255));
-        ImGui::PushStyleVar(ImGuiStyleVar_ButtonTextAlign, ImVec2(0.22f,0.5f));
-        if (ImGui::Button(pages[i], ImVec2(155,32))) active=i;
+        ImGui::PushStyleVar(ImGuiStyleVar_ButtonTextAlign, ImVec2(0.27f,0.5f));
+        if (ImGui::Button(pages[i], ImVec2(182,38))) active=i;
         ImGui::PopStyleVar(); ImGui::PopStyleColor(2);
         const ImVec2 a=ImGui::GetItemRectMin(), b=ImGui::GetItemRectMax();
-        const ImU32 ink=active==i?IM_COL32(180,145,155,255):IM_COL32(94,94,94,255);
-        const ImVec2 c(a.x+15,(a.y+b.y)*0.5f);
+        const ImU32 ink=active==i || ImGui::IsItemHovered()?IM_COL32(215,173,188,255):IM_COL32(125,125,125,255);
+        const ImVec2 c(a.x+20,(a.y+b.y)*0.5f);
         switch (i) {
-        case 0: draw->AddLine(ImVec2(c.x-5,c.y+3),ImVec2(c.x+5,c.y-3),ink,2); draw->AddLine(ImVec2(c.x+1,c.y-3),ImVec2(c.x+5,c.y-3),ink,2); break;
-        case 1: draw->AddTriangleFilled(ImVec2(c.x,c.y-5),ImVec2(c.x-5,c.y+4),ImVec2(c.x+5,c.y+4),ink); break;
-        case 2: draw->AddLine(ImVec2(c.x-5,c.y+5),ImVec2(c.x+5,c.y-5),ink,3); break;
-        case 3: draw->AddCircle(c,5,ink,16,1.5f); draw->AddCircleFilled(c,2,ink); break;
-        case 4: draw->AddRect(ImVec2(c.x-5,c.y-5),ImVec2(c.x+5,c.y+5),ink,1,0,1.5f); break;
-        default: draw->AddRectFilled(ImVec2(c.x-4,c.y-5),ImVec2(c.x+4,c.y+5),ink,1); break;
+        case 0: draw->AddLine(ImVec2(c.x-8,c.y+5),ImVec2(c.x+8,c.y-5),ink,2); draw->AddLine(ImVec2(c.x+1,c.y-5),ImVec2(c.x+8,c.y-5),ink,2); break;
+        case 1: draw->AddTriangleFilled(ImVec2(c.x,c.y-8),ImVec2(c.x-8,c.y+7),ImVec2(c.x+8,c.y+7),ink); break;
+        case 2: draw->AddLine(ImVec2(c.x-8,c.y+8),ImVec2(c.x+8,c.y-8),ink,3); break;
+        case 3: draw->AddCircle(c,8,ink,24,2.0f); draw->AddCircleFilled(c,3,ink); break;
+        case 4: draw->AddRect(ImVec2(c.x-8,c.y-8),ImVec2(c.x+8,c.y+8),ink,1,0,1.5f); break;
+        default: draw->AddRectFilled(ImVec2(c.x-6,c.y-8),ImVec2(c.x+6,c.y+8),ink,1); break;
         }
-        if (active==i) draw->AddRectFilled(ImVec2(a.x,a.y+5), ImVec2(a.x+2,b.y-5), ink,1);
+        if (active==i) draw->AddRectFilled(ImVec2(a.x,a.y+5), ImVec2(a.x+3,b.y-5), ink,1);
         ImGui::PopID();
     }
     if (ImGui::GetContentRegionAvail().y > 44) {
         ImGui::SetCursorPos(ImVec2(9,extent.y-45));
-        ImGui::BeginChild("##build_badge",ImVec2(162,36),true,ImGuiWindowFlags_NoScrollbar);
+        ImGui::BeginChild("##build_badge",ImVec2(188,36),true,ImGuiWindowFlags_NoScrollbar);
         ImGui::TextColored(ImVec4(.70f,.56f,.60f,1), "BOB  /  TEST");
         ImGui::EndChild();
     }
     ImGui::EndChild();
     ImGui::SameLine(0,0);
     ImGui::BeginChild("##static_tab_content", ImVec2(0,0), false, ImGuiWindowFlags_HorizontalScrollbar | ImGuiWindowFlags_AlwaysUseWindowPadding);
+    ImGui::SetWindowFontScale(1.12f);
     R_DrawMenuByName(pages[active], false);
     ImGui::EndChild();
 }

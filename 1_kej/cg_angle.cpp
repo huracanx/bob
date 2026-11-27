@@ -316,11 +316,11 @@ float cg::getOptAngle(float& _opt, const bool all_techs, const char forwardmoveI
 	float delta = yaw;
 
 
-	if (rightmove > 0 || (rightmove == 0 && ((v::mod_auto_para.isEnabled() || v::mod_auto_250.isEnabled()) ? automation.paraSide > 0 : all_techs && (WE || SE)))) {
+	if (rightmove > 0 || (rightmove == 0 && (automation.paraActive ? automation.paraSide > 0 : all_techs && (WE || SE)))) {
 		delta = (velocitydirection - diff - accelerationAng);
 		_opt = delta - yaw;
 	}
-	else if (rightmove < 0 || (rightmove == 0 && ((v::mod_auto_para.isEnabled() || v::mod_auto_250.isEnabled()) ? automation.paraSide < 0 : all_techs && (WQ || SQ)))) {
+	else if (rightmove < 0 || (rightmove == 0 && (automation.paraActive ? automation.paraSide < 0 : all_techs && (WQ || SQ)))) {
 		delta = (velocitydirection + diff - accelerationAng);
 		_opt = delta - yaw;
 	}
