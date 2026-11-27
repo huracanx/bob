@@ -19,12 +19,25 @@ void cg::Mod_A_Strafebot()
 	const usercmd_s* cmd = cinput->GetUserCmd(cinput->currentCmdNum - 1);
     if (!cmd) return;
     // Live movement input is used for air WA/WD; ground keeps its existing path.
-    const char forward = GROUND ? cmd->forwardmove : input->move;
-    const char sideMove = GROUND ? cmd->rightmove : input->strafe;
+    const char forward = input->move;
+    const char sideMove = input->strafe;
+    const bool para = v::mod_auto_para.isEnabled() && forward > 0 && sideMove == 0 && !(GetAsyncKeyState('A') < 0) && !(GetAsyncKeyState('D') < 0);
+    if (sideMove) automation.paraSide = sideMove > 0 ? 1 : -1;
+    static bool was250 = false;
+    static DWORD last250Switch = 0;
+    const bool in250 = para && NOT_GROUND && v::mod_autoFPS.isEnabled() &&
+        v::mod_fps_override.GetInt() == 0 && Mod_RecommendedFPS(AngleNormalize180(clients->cgameViewangles[YAW]), forward, sideMove) == 250;
+    const DWORD switchNow = Sys_MilliSeconds();
+    if (v::mod_auto_250.isEnabled() && in250 && !was250 &&
+        (!last250Switch || switchNow-last250Switch >= 100)) {
+        automation.paraSide = -automation.paraSide;
+        last250Switch = switchNow;
+    }
+    was250 = in250;
 
     // WA/WD is the basic ground mode. It must not depend on the separate
     // "All Techniques" option; that option remains relevant to other patterns.
-    if (sideMove == 0 || (GROUND && forward <= 0)) {
+    if ((!para && sideMove == 0) || (GROUND && forward <= 0)) {
         resetGround();
         if (GROUND) { lastAirSide = 0; lastAirUpdate = 0; airSwitchTime = 0; }
         return;
@@ -48,7 +61,7 @@ void cg::Mod_A_Strafebot()
     if (GROUND) {
         lastAirSide = 0; lastAirUpdate = 0; airSwitchTime = 0;
         const DWORD now = Sys_MilliSeconds();
-        const int side = sideMove > 0 ? 1 : -1;
+        const int side = automation.paraSide;
         if (!lastGroundUpdate || now - lastGroundUpdate > 100) {
             lastGroundUpdate = now;
             lastGroundSide = side;
@@ -71,7 +84,7 @@ void cg::Mod_A_Strafebot()
     }
 
     const DWORD now = Sys_MilliSeconds();
-    const int side = sideMove > 0 ? 1 : -1;
+    const int side = automation.paraSide;
     const bool continuous = lastAirUpdate && now - lastAirUpdate <= 100;
     if (continuous && lastAirSide && side != lastAirSide)
         airSwitchTime = now;
@@ -81,7 +94,7 @@ void cg::Mod_A_Strafebot()
     lastAirSide = side;
     const float error = AngleNormalize180(optYaw - clients->cgameViewangles[YAW]);
     const bool switching = airSwitchTime && now - airSwitchTime < 65;
-    const bool diagonal = forward > 0 && sideMove != 0;
+    const bool diagonal = forward > 0 && (sideMove != 0 || para);
     const int sinceJump = jumpanalyzer.serverTime - jumpanalyzer.airTime;
     const int sinceGround = jumpanalyzer.serverTime - jumpanalyzer.groundTime;
     const float smoothing = glm::max(1.0f, (sinceJump >= 0 && sinceJump < 300 || sinceGround < 200)
@@ -123,6 +136,10 @@ void cg::Mod_A_AutoFPS()
 
 	if (!v::mod_autoFPS.isEnabled())
 		fps = com_maxfps->current.integer;
+    else if (NOT_GROUND) {
+        const int selected = v::mod_fps_override.GetInt();
+        if (selected == 166 || selected == 142 || selected == 111) fps = selected;
+    }
 
 	// hug500 - bounce hugging needs higher fps
 	// (applies regardless of autoFPS state - specific bounce technique)
@@ -144,7 +161,8 @@ void cg::Mod_A_AutoFPS()
 	if (v::mod_autoFPS.isEnabled() && !box500.use500 && GROUND)
 		fps = spaceHeld ? 125 : 333;
 
-	com_maxfps->current.integer = fps;
+	if (automation.currentlySliding && v::mod_autoslide.GetInt() == 2) fps = 15;
+    com_maxfps->current.integer = fps;
 }
 void cg::Mod_A_AdjustRPG(pmove_t* pm, pml_t* pml)
 {
@@ -181,103 +199,75 @@ void cg::Mod_A_AdjustRPG(pmove_t* pm, pml_t* pml)
 
 }
 
-void cg::Mod_A_AutoSliding(pmove_t* pmove, pml_t* pml)
-{
-
-	if (!v::mod_autoslide.isEnabled()) {
-		//Com_PrintError(CON_CHANNEL_OBITUARY, "Mod_A_AutoSliding(): shouldn't have been called at this time! (keybind used but the feature itself thinks its unbound?)\n");
-		//Com_PrintError(CON_CHANNEL_CONSOLEONLY, "Mod_A_AutoSliding(): shouldn't have been called at this time! (keybind used but the feature itself thinks its unbound?)\n");
-		return;
-	}
-
-	// force sliding through engine
-	const auto methodA = [](pmove_t* pmove, pml_t* pml, DWORD& old_ms, const bool part1) -> void
-	{
-		hook* a = nullptr;
-		if (automation.pendingSlide && (pml->almostGroundPlane || pml->groundPlane)) {
-			automation.currentlySliding = true;
-			a->write_addr(0x410660, "\xC3", 1); 
-			old_ms = Sys_MilliSeconds();
-		}
-		if (part1)
-			return;
-
-		const DWORD ms = Sys_MilliSeconds();
-
-
-		if ((old_ms + (move->jump == true && v::mod_bhop.isEnabled() ? 1 : 100)) < ms) { //allow 100ms to slide and if jump is not held
-			old_ms = ms;
-			automation.currentlySliding = false;
-			a->write_addr(0x410660, "\x83", 1);
-			automation.pendingSlide = false;
-		}
-
-	};	
-	//switch to 15fps
-	const auto methodB = [](pmove_t* pm, pml_t* pml, DWORD& old_ms, const bool part1) -> void 
-	{
-		static int fps_b4_switch = 125;
-		if (automation.pendingSlide && !automation.currentlySliding) {
-			fps_b4_switch = Dvar_FindMalleableVar("com_maxfps")->current.integer;
-			trace_t trace;
-			playerState_s* ps = pm->ps;
-			vec3_t end(ps->origin[0], ps->origin[1], ps->origin[2]);
-			end[2] -= 100;
-			
-			PM_playerTrace(pm, &trace, ps->origin, pm->mins, pm->maxs, end, ps->clientNum, pm->tracemask);
-
-			if (trace.fraction != 1.f && ps->velocity[2] > 0 && NOT_GROUND) {
-				//Com_Printf(CON_CHANNEL_OBITUARY, "hey from 15fps\n");
-				automation.currentlySliding = true;
-			}
-
-			old_ms = Sys_MilliSeconds();
-
-		}
-		else if (automation.currentlySliding) {
-			if (v::mod_autoFPS.isEnabled())
-				jumpanalyzer.recommendedFPS = 15;
-			else
-				Dvar_FindMalleableVar("com_maxfps")->current.integer = 15;
-
-			if (old_ms + 250 < Sys_MilliSeconds()) {
-				automation.pendingSlide = false;
-				automation.currentlySliding = false;
-
-				Dvar_FindMalleableVar("com_maxfps")->current.integer = fps_b4_switch;
-
-
-			}
-
-		}
-	};
-
-	hook* a = 0;
-	static DWORD old_ms(0);
-
-	if (automation.keybindPressed & 1 && !automation.currentlySliding) { 
-		automation.pendingSlide = true;
-		automation.keybindPressed = false;
-	}
-
-	bool use_methodA = v::mod_autoslide.GetInt() == 1;
-
-	if (use_methodA)
-		methodA(pmove, pml, old_ms, true);
-	else
-		methodB(pmove, pml, old_ms, true);
-
-
-	if (!automation.currentlySliding)
-		return;
-	
-
-	if (use_methodA)
-		methodA(pmove, pml, old_ms, false);
-
-
-
+namespace {
+    DWORD slideArmedAt = 0, slideStartedAt = 0;
+    int slideSavedFPS = 0, slideActiveMode = 0;
+    bool slideKeyDown = false, slidePatched = false, slideSawAir = false;
 }
+void cg::Mod_A_CancelSliding()
+{
+    if (slidePatched) {
+        hook h;
+        h.write_addr(0x410660, "\x83", 1);
+        slidePatched = false;
+    }
+    if (slideActiveMode == 2 && slideSavedFPS > 0) {
+        if (auto* fps = Dvar_FindMalleableVar("com_maxfps")) fps->current.integer = slideSavedFPS;
+    }
+    automation.pendingSlide = automation.currentlySliding = automation.keybindPressed = false;
+    slideArmedAt = slideStartedAt = 0;
+    slideSavedFPS = slideActiveMode = 0;
+    slideSawAir = false;
+}
+void cg::Mod_A_AutoSliding(pmove_t* pm, pml_t* pml)
+{
+    const int mode = v::mod_autoslide.GetInt();
+    const int key = v::mod_edge_key.GetInt();
+    const bool down = key > 0 && key <= 255 && (GetAsyncKeyState(key) < 0);
+    const bool pressed = down && !slideKeyDown;
+    slideKeyDown = down;
+    if (!pm || !pm->ps || !pml || !mode || r::inputCaptured || !VID_ACTIVE || pm->ps->pm_type != PM_NORMAL ||
+        (slideActiveMode && slideActiveMode != mode)) {
+        Mod_A_CancelSliding(); return;
+    }
+    const DWORD now = Sys_MilliSeconds();
+    if (pressed || automation.keybindPressed) {
+        automation.keybindPressed = false;
+        if (automation.pendingSlide || automation.currentlySliding) { Mod_A_CancelSliding(); return; }
+        automation.pendingSlide = true; slideArmedAt = now;
+    }
+    if (automation.currentlySliding) {
+        if (slideActiveMode == 2) {
+            if (auto* fps = Dvar_FindMalleableVar("com_maxfps")) fps->current.integer = 15;
+        }
+        const DWORD duration = slideActiveMode == 1 ? 100 : 250;
+        if (now - slideStartedAt >= duration || (slideActiveMode == 2 && pml->walking)) Mod_A_CancelSliding();
+        return;
+    }
+    if (!automation.pendingSlide) return;
+    if (!pml->walking && pm->ps->groundEntityNum == ENTITYNUM_NONE) slideSawAir = true;
+    if (now - slideArmedAt > 5000) { Mod_A_CancelSliding(); return; }
+    if (!slideSawAir) return;
+    if (mode == 1) {
+        if (!pml->almostGroundPlane && !pml->groundPlane) return;
+        // Retain the existing engine method only on the expected original instruction.
+        if (*reinterpret_cast<const BYTE*>(0x410660) != 0x83) { Mod_A_CancelSliding(); return; }
+        hook h; h.write_addr(0x410660, "\xC3", 1); slidePatched = true;
+    } else if (mode == 2) {
+        if (pml->walking || pm->ps->groundEntityNum != ENTITYNUM_NONE) return;
+        trace_t trace{};
+        vec3_t end(pm->ps->origin[0], pm->ps->origin[1], pm->ps->origin[2]);
+        end[2] -= 100.0f;
+        PM_playerTrace(pm, &trace, pm->ps->origin, pm->mins, pm->maxs, end, pm->ps->clientNum, pm->tracemask);
+        if (trace.fraction >= 1.0f || trace.startsolid || trace.allsolid) return;
+        auto* fps = Dvar_FindMalleableVar("com_maxfps");
+        if (!fps) { Mod_A_CancelSliding(); return; }
+        slideSavedFPS = fps->current.integer; fps->current.integer = 15;
+    } else { Mod_A_CancelSliding(); return; }
+    slideActiveMode = mode; slideStartedAt = now;
+    automation.pendingSlide = false; automation.currentlySliding = true;
+}
+
 void cg::Mod_A_OnCreate500FPS()
 {
 	if (!v::mod_auto500_enabled.isEnabled()) {

@@ -576,14 +576,11 @@ void r::UI_CreateSettings(bool& editing)
 
 void r::UI_DrawGradientZone(ImVec2 size)
 {
-	ImGradient grad;
-	grad.addMark(0, ImColor(255, 111, 0, 255));
-	grad.addMark(0.5f, ImColor(255, 175, 0, 255));
-	grad.addMark(1, ImColor(255, 230, 0, 255));
-	const ImVec2 sp = ImGui::GetCursorScreenPos();
-	ImGui::DrawGradientBar(&grad, sp, size.x, 5);
-	ImGui::GetWindowDrawList()->AddRectFilled(ImVec2(sp.x, sp.y + 5), ImVec2(sp.x + size.x, sp.y + size.y), ImColor(0.08f, 0.07f, 0.075f, 0.8f));
-	ImGui::Dummy(ImVec2(size.x, 1));
+    const ImVec2 sp=ImGui::GetCursorScreenPos();
+    auto* dl=ImGui::GetWindowDrawList();
+    dl->AddRectFilled(sp, ImVec2(sp.x+size.x,sp.y+size.y), IM_COL32(32,32,32,255), 5.f);
+    dl->AddRect(sp, ImVec2(sp.x+size.x,sp.y+size.y), IM_COL32(52,52,52,255), 5.f);
+    ImGui::Dummy(ImVec2(size.x, 3));
 }
 
 

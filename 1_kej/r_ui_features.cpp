@@ -653,104 +653,30 @@ void r::R_DrawMenuByName(const char* category, bool justPressed)
 }
 void r::R_Features()
 {
-	const auto FindTextureByName = [](const char* name)->ImTextureID {
-		for (const auto& i : r::imagePairs) {
-			if (!i.first.compare(name))
-				return i.second;
-		}
-		return nullptr;
-	};
-	const auto DrawCategory = [](const ImTextureID tex, const char* name) -> void {
-		ImGui::BeginGroup();
-		ImGui::Image(tex, ImVec2(64, 64));
-		ImGui::SameLine();
-		ImGui::BeginGroup();
-		ImGui::Text("\n");
-		ImGui::Text(name);
-		ImGui::EndGroup();
-		ImGui::Separator();
-		ImGui::EndGroup();
-	};
-	const auto GetCategoryIndex = [](const char* name) -> size_t {
-		for (size_t i = 0; i < r::imagePairs.size(); i++) {
-			if (!r::imagePairs[i].first.compare(name))
-				return i;
-		}
-		return 0;
-	};
-		 
-    const ImVec2 available = ImGui::GetContentRegionAvail();
-    const ImVec2 childSize(available.x * 0.24f, available.y);
-    ImGui::BeginGroup();
-    ImGui::BeginChild("child##034", childSize, true);
-
-	static int ActiveIndex(0);
-	
-	bool justPressed(false);
-
-	size_t indx(0);
-
-	static bool first_open(true);
-
-	if (first_open) {
-		ActiveIndex = UI_GetImageIndex("Jumping");
-		first_open = false;
-	}
-
-	const ImTextureID homeTex = FindTextureByName("Home.png");
-	if (!homeTex) {
-		fs::Log_Write(LOG_FATAL, "Unable to load image %s from %s\n", "Home.png", std::string(fs::GetExePath() + "\\1_kej\\images").c_str());
-		ImGui::EndChild();
-		ImGui::EndGroup();
-		return;
-	}
-	//Home page always @ the top instead of in alphabetical order
-	DrawCategory(homeTex, "Home");
-	if (ImGui::IsItemHovered()) {
-		ImVec2 rect = ImGui::GetItemRectSize();
-		ImGui::GetForegroundDrawList()->AddRectFilled(ImGui::GetItemRectMin(), ImVec2(ImGui::GetItemRectMin().x + childSize.x - 10, ImGui::GetItemRectMax().y), IM_COL32(255, 255, 255, 170));
-	}
-
-	if (ImGui::IsItemClicked()) {
-		justPressed = true;
-		ActiveIndex = GetCategoryIndex("Home.png");
-	}
-	else {
-		for (const auto& i : r::imagePairs) {
-
-			if (i.first.find("_no_load") != std::string::npos || i.first.find("Home") != std::string::npos) {
-				++indx;
-				continue;
-			}
-
-			DrawCategory(i.second, fs::removeFileExtension(i.first.c_str(), 4).c_str());
-
-			if (ImGui::IsItemHovered()) {
-				ImVec2 rect = ImGui::GetItemRectSize();
-				ImGui::GetForegroundDrawList()->AddRectFilled(ImGui::GetItemRectMin(), ImVec2(ImGui::GetItemRectMin().x + childSize.x - 10, ImGui::GetItemRectMax().y), IM_COL32(255, 255, 255, 170));
-			}
-
-			if (ImGui::IsItemClicked()) {
-				justPressed = true;
-
-				ActiveIndex = indx;
-
-			}
-			++indx;
-
-		}
-	}
-    ImGui::EndChild();
-    ImGui::EndGroup();
-    ImGui::SameLine();
-    ImGui::BeginChild("##static_tab_content", ImVec2(0, 0), false, ImGuiWindowFlags_HorizontalScrollbar);
-    if (ActiveIndex >= 0 && static_cast<size_t>(ActiveIndex) < r::imagePairs.size()) {
-        const std::string category = fs::removeFileExtension(r::imagePairs[ActiveIndex].first, 4);
-        R_DrawMenuByName(category.c_str(), justPressed);
+    static int active = 0;
+    const char* pages[] = { "Automation", "Jumping", "Rpg", "Visuals", "Map", "Home" };
+    ImGui::BeginChild("##sidebar", ImVec2(160, 0), true);
+    ImGui::TextColored(ImVec4(.69f,.55f,.59f,1), "BOB / TEST");
+    ImGui::Spacing();
+    for (int i=0; i<6; ++i) {
+        if (i==0 || i==3 || i==5) {
+            ImGui::Spacing();
+            ImGui::TextDisabled("%s", i==0 ? "Movement" : i==3 ? "Visuals" : "Miscellaneous");
+        }
+        if (ImGui::Selectable(pages[i], active==i, 0, ImVec2(0,30))) active=i;
+        if (active==i) {
+            const ImVec2 a=ImGui::GetItemRectMin(), b=ImGui::GetItemRectMax();
+            ImGui::GetWindowDrawList()->AddRectFilled(a, ImVec2(a.x+2,b.y), IM_COL32(174,139,148,255));
+        }
     }
+    if (ImGui::GetContentRegionAvail().y > 40) ImGui::SetCursorPosY(ImGui::GetWindowHeight()-40);
+    ImGui::Separator(); ImGui::TextDisabled("TEST BUILD");
+    ImGui::EndChild();
+    ImGui::SameLine();
+    ImGui::BeginChild("##static_tab_content", ImVec2(0,0), false, ImGuiWindowFlags_HorizontalScrollbar);
+    R_DrawMenuByName(pages[active], false);
     ImGui::EndChild();
 }
-
 
 void r::R_HomeTab()
 {

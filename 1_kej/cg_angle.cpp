@@ -233,7 +233,7 @@ float cg::getOptAngle(float& _opt, const bool all_techs, const char forwardmoveI
 
     if (_speed < 1.0f || (_speed < clients->snap.ps.speed && NOT_GROUND) ||
         (!all_techs && !GROUND && forwardmove != 127 && rightmove != 0) ||
-        (GROUND && (forwardmove <= 0 || rightmove == 0)))
+        (GROUND && (forwardmove <= 0 || (rightmove == 0 && !v::mod_auto_para.isEnabled()))))
         return -400.0f;
 
     // Keep the existing all-techs behavior for alternate movement combinations.
@@ -271,7 +271,7 @@ float cg::getOptAngle(float& _opt, const bool all_techs, const char forwardmoveI
         // At running start, retain the player's chosen heading and progressively
         // introduce the optimal correction near normal running speed.
         const float blend = glm::clamp((_speed / wishSpeed - 0.70f) / 0.30f, 0.0f, 1.0f);
-        const float target = velocityYaw + (rightmove > 0 ? -angle : angle) - inputYaw;
+        const float target = velocityYaw + (rightmove > 0 || (rightmove == 0 && automation.paraSide > 0) ? -angle : angle) - inputYaw;
         _opt = AngleNormalize180(target - yaw) * blend;
         return yaw + _opt;
     }
@@ -295,7 +295,7 @@ float cg::getOptAngle(float& _opt, const bool all_techs, const char forwardmoveI
 
 	//float accel = g_speed * jumpanalyzer.frametime;
 
-	if (jumpanalyzer.recommendedFPS == 125 && NOT_GROUND)
+	if (NOT_GROUND && ((FPS == 166.0f || FPS == 142.0f || FPS == 111.0f) || jumpanalyzer.recommendedFPS == 125))
 		accel = g_speed / FPS;
 
 	//float r = sqrtf();
@@ -316,11 +316,11 @@ float cg::getOptAngle(float& _opt, const bool all_techs, const char forwardmoveI
 	float delta = yaw;
 
 
-	if (rightmove > 0 || (rightmove == 0 && all_techs && (WE || SE))) {
+	if (rightmove > 0 || (rightmove == 0 && (v::mod_auto_para.isEnabled() ? automation.paraSide > 0 : all_techs && (WE || SE)))) {
 		delta = (velocitydirection - diff - accelerationAng);
 		_opt = delta - yaw;
 	}
-	else if (rightmove < 0 || (rightmove == 0 && all_techs && (WQ || SQ))) {
+	else if (rightmove < 0 || (rightmove == 0 && (v::mod_auto_para.isEnabled() ? automation.paraSide < 0 : all_techs && (WQ || SQ)))) {
 		delta = (velocitydirection + diff - accelerationAng);
 		_opt = delta - yaw;
 	}

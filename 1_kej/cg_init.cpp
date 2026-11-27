@@ -182,6 +182,7 @@ void cg::CG_RemoveHooks()
 	a->remove(&(PVOID&)PM_UFOMove_f, PM_UFOMove);
 	a->remove(&(PVOID&)PM_Weapon_f, PM_Weapon);
 	a->remove(&(PVOID&)r::CG_DrawActive_f, r::CG_DrawActive);
+    Mod_A_CancelSliding();
     RemoveBhopHook();
     if (pmoveHookInstalled && a->remove(&(PVOID&)Pmove_f, Pmove) == NO_ERROR)
         pmoveHookInstalled = false;

@@ -16,7 +16,8 @@ namespace cg
 
 	//actively updating automation data
 	struct automation_s {
-		bool keybindPressed;
+		int paraSide = 1;
+        bool keybindPressed;
 		bool pendingSlide;
 		bool currentlySliding;
 
@@ -33,6 +34,7 @@ namespace cg
 	void Mod_A_AutoFPS();
 	void Mod_A_AdjustRPG(pmove_t* pm, pml_t* pml);
 	void Mod_A_AutoSliding(pmove_t* pm, pml_t* pml);
+    void Mod_A_CancelSliding();
 
 
 	inline area500_s box500;
