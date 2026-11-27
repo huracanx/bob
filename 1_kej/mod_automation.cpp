@@ -2,17 +2,27 @@
 
 void cg::Mod_A_Strafebot()
 {
+    static DWORD lastGroundUpdate = 0;
+    static float groundBlend = 0.0f;
+    static int lastGroundSide = 0;
+    const auto resetGround = [&]() {
+        lastGroundUpdate = 0;
+        groundBlend = 0.0f;
+        lastGroundSide = 0;
+    };
 	if (!v::mod_strafebot.isEnabled() || clients->snap.ps.pm_type == PM_UFO || v::mod_strafebot.isEnabled() && (GetAsyncKeyState(v::mod_strafebot_ow.GetInt()) < 0) == true)
-		return;
+	{ resetGround(); return; }
 
 	const usercmd_s* cmd = cinput->GetUserCmd(cinput->currentCmdNum - 1);
 
     // WA/WD is the basic ground mode. It must not depend on the separate
     // "All Techniques" option; that option remains relevant to other patterns.
-    if (cmd->rightmove == 0)
+    if (cmd->rightmove == 0 || (GROUND && cmd->forwardmove <= 0)) {
+        resetGround();
         return;
-    if (GROUND && cmd->forwardmove <= 0)
-        return;
+    }
+    if (NOT_GROUND)
+        resetGround();
 
 	float optYaw, test;
 
@@ -22,8 +32,31 @@ void cg::Mod_A_Strafebot()
 		clients->viewangles[YAW] = fmodf(clients->viewangles[YAW], 360);
 
 	optYaw = getOptAngle(test, v::mod_strafebot_all.isEnabled(), cmd->forwardmove, cmd->rightmove);
-	if (optYaw == -400.f || !std::isfinite(optYaw))
-		return;
+	if (optYaw == -400.f || !std::isfinite(optYaw)) {
+        resetGround();
+        return;
+    }
+
+    if (GROUND) {
+        const DWORD now = Sys_MilliSeconds();
+        const int side = cmd->rightmove > 0 ? 1 : -1;
+        if (!lastGroundUpdate || now - lastGroundUpdate > 100 || side != lastGroundSide) {
+            lastGroundUpdate = now;
+            lastGroundSide = side;
+            groundBlend = 0.0f;
+            return; // Preserve camera on engagement and direction changes.
+        }
+        const float dt = glm::min(0.025f, (now - lastGroundUpdate) * 0.001f);
+        lastGroundUpdate = now;
+        groundBlend = glm::min(1.0f, groundBlend + dt / 0.15f);
+        const float yaw = clients->cgameViewangles[YAW];
+        const float error = AngleNormalize180(optYaw - yaw);
+        const float maxStep = (60.0f + 180.0f * groundBlend) * dt;
+        const float correction = glm::clamp(error * glm::min(1.0f, dt * 18.0f) * groundBlend,
+                                            -maxStep, maxStep);
+        clients->viewangles[YAW] += correction;
+        return;
+    }
 
 	if (cmd->forwardmove != 0 || cmd->rightmove != 0) {
 		float smoothed_yaw = optYaw;
@@ -42,11 +75,6 @@ void cg::Mod_A_Strafebot()
 			
 				
 		}
-
-        // On ground apply the optimal correction immediately. Bhop/air
-        // smoothing must not delay ground acceleration.
-        if (GROUND)
-            smoothed_yaw = optYaw;
 
 		setYaw(clients->cgameViewangles[YAW], smoothed_yaw);
 

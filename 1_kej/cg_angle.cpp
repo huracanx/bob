@@ -262,14 +262,18 @@ float cg::getOptAngle(float& _opt, const bool all_techs, const char forwardmoveI
         const float control = _speed > stopSpeed ? _speed : stopSpeed;
         const float afterFriction = glm::max(0.0f, _speed - control * friction * dt);
         const float accelStep = groundAccel * wishSpeed * dt;
-        const float projection = glm::max(0.0f, wishSpeed - accelStep);
+        // A small projection margin reduces lost acceleration from tracking lag.
+        const float projection = glm::max(0.0f, wishSpeed - accelStep * 1.10f);
         const float ratio = afterFriction > 0.0f
             ? glm::clamp(projection / afterFriction, 0.0f, 1.0f) : 1.0f;
         const float angle = acosf(ratio) * 180.0f / PI;
         const float velocityYaw = atan2f(clients->cgameVelocity[1], clients->cgameVelocity[0]) * 180.0f / PI;
         const float inputYaw = atan2f(-static_cast<float>(rightmove), static_cast<float>(forwardmove)) * 180.0f / PI;
+        // At running start, retain the player's chosen heading and progressively
+        // introduce the optimal correction near normal running speed.
+        const float blend = glm::clamp((_speed / wishSpeed - 0.70f) / 0.30f, 0.0f, 1.0f);
         const float target = velocityYaw + (rightmove > 0 ? -angle : angle) - inputYaw;
-        _opt = AngleNormalize180(target - yaw);
+        _opt = AngleNormalize180(target - yaw) * blend;
         return yaw + _opt;
     }
 
