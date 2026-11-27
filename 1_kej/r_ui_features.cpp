@@ -255,6 +255,23 @@ void Visual_Features()
 				v::mod_showFPS.SetValue(v::mod_showFPS.isEnabled());
 
 			} ImGui::SameLine(); r::MetricsHelpMarker("Show current FPS limit (com_maxfps), independent of the velocity HUD");
+            ImGui::SameLine();
+            static bool editingFPS = false;
+            ImGui::PushID("fps_limit_settings");
+            r::UI_CreateSettings(editingFPS);
+            ImGui::PopID();
+            if (editingFPS) {
+                if (ImGui::Begin("Modify Show FPS", &editingFPS, ImGuiWindowFlags_AlwaysAutoResize)) {
+                    ImGui::PushItemWidth(100);
+                    ImGui::DragFloat("x", &v::mod_showFPS_layout.evar->arrayValue[0], 1.f, 0.f, 1920.f, "%.0f");
+                    ImGui::DragFloat("y", &v::mod_showFPS_layout.evar->arrayValue[1], 1.f, 0.f, 1080.f, "%.0f");
+                    ImGui::DragFloat("font scale", &v::mod_showFPS_layout.evar->arrayValue[2], 0.25f, 0.1f, 10.f, "%.2f");
+                    ImGui::ColorEdit4("text color", v::mod_showFPS_color.evar->vecValue, ImGuiColorEditFlags_NoInputs);
+                    ImGui::ColorEdit4("glow color", v::mod_showFPS_glow.evar->vecValue, ImGuiColorEditFlags_NoInputs);
+                    ImGui::PopItemWidth();
+                }
+                ImGui::End();
+            }
 
 			if (ImGui::Checkbox("horizontal bar", &v::mod_fps_transferz.evar->enabled)) {
 				float val = (float)v::mod_fps_transferz.evar->enabled;

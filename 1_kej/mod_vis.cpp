@@ -74,18 +74,16 @@ void cg::Mod_DrawFPSLimit()
 
     const auto* fps = Dvar_FindMalleableVar("com_maxfps");
     char buffer[32];
-    if (fps)
-        sprintf_s(buffer, "FPS: %i", fps->current.integer);
-    else
-        sprintf_s(buffer, "FPS: N/A");
-
-    float color[4] = { 1.f, 1.f, 1.f, 1.f };
-    const float x = v::mod_velometer.GetArray(1);
-    const float y = v::mod_velometer.GetArray(2);
-    const float scale = v::mod_velometer.GetArray(3);
-    r::R_DrawText(buffer, "fonts/objectivefont", x,
-        y + (v::mod_velometer.isEnabled() ? 24.f * scale : 0.f),
-        scale, scale, 0.f, color, 0);
+    if (!fps) return;
+    sprintf_s(buffer, "%i", fps->current.integer);
+    const float x = v::mod_showFPS_layout.GetArray(0);
+    const float y = v::mod_showFPS_layout.GetArray(1);
+    const float scale = v::mod_showFPS_layout.GetArray(2);
+    auto* material = r::R_RegisterMaterial("decode_characters");
+    auto* glow = r::R_RegisterMaterial("decode_characters_glow");
+    r::R_AddCmdDrawTextWithEffects(buffer, "fonts/objectivefont", r::X(x), r::Y(y),
+        scale, scale, 0.f, v::mod_showFPS_color.evar->vecValue, 3,
+        v::mod_showFPS_glow.evar->vecValue, material, glow, 0, 500, 1000, 2000);
 }
 
 void cg::Mod_DrawCoordinates()

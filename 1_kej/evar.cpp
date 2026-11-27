@@ -290,6 +290,10 @@ void Evar_Setup()
 	v::mod_curve_speed.Register		("1_kej_curve_speed",				evartype_t::EVAR_BOOL,		(float)0,				true);
 
 	v::mod_showFPS.Register			("1_kej_showFPS",					evartype_t::EVAR_BOOL,		(float)0,				true);
+    float fpsLayout[3] = { 960.f, 612.f, 3.f };
+    v::mod_showFPS_layout.Register("1_kej_showFPS_layout", evartype_t::EVAR_ARRAY, fpsLayout, 3, true);
+    v::mod_showFPS_glow.Register("1_kej_showFPS_glow", evartype_t::EVAR_VEC4, vec4_t{1,0,0,1}, true);
+    v::mod_showFPS_color.Register("1_kej_showFPS_color", evartype_t::EVAR_VEC4, vec4_t{1,1,1,1}, true);
 	v::mod_FPS_cylindrical.Register	("1_kej_FPS_cylindrical",			evartype_t::EVAR_BOOL,		(float)0,				true);
 
 
