@@ -6,18 +6,13 @@ void cg::Mod_A_Strafebot()
 		return;
 
 	const usercmd_s* cmd = cinput->GetUserCmd(cinput->currentCmdNum - 1);
-	if (!cmd)
-		return;
 
-	// Ничего не стрейфим, если нет стрейфа вообще.
-	if (cmd->rightmove == 0)
-		return;
-
-	// Default mode handles WA / WD on both ground and in air.
-	// "All techniques" expands the accepted movement combinations.
-	const bool allTechs = v::mod_strafebot_all.isEnabled();
-	if (!allTechs && cmd->forwardmove <= 0)
-		return;
+    // WA/WD is the basic ground mode. It must not depend on the separate
+    // "All Techniques" option; that option remains relevant to other patterns.
+    if (cmd->rightmove == 0)
+        return;
+    if (GROUND && cmd->forwardmove <= 0)
+        return;
 
 	float optYaw, test;
 
@@ -26,7 +21,7 @@ void cg::Mod_A_Strafebot()
 	else if (clients->viewangles[YAW] > 3000 || clients->viewangles[YAW] < -3000)
 		clients->viewangles[YAW] = fmodf(clients->viewangles[YAW], 360);
 
-	optYaw = getOptAngle(test, allTechs, (int)cmd->forwardmove, (int)cmd->rightmove);
+	optYaw = getOptAngle(test, v::mod_strafebot_all.isEnabled(), cmd->forwardmove, cmd->rightmove);
 	if (optYaw == -400.f || std::isnan(optYaw))
 		return;
 
@@ -40,13 +35,28 @@ void cg::Mod_A_Strafebot()
 		if (NOT_GROUND && v::mod_strafebot_smooth.GetFloat() != 1.f || (time_since_jumped > 0 && time_since_jumped < 300 || groundTime < 200) && v::mod_strafebot_bhop_s.GetFloat() != 1.f) {
 			const float dist2opt = DistanceToOpt(optYaw, clients->cgameViewangles[YAW]);
 			if (time_since_jumped < 400 && dist2opt > 1) {
-				CG_ApplySmoothing(clients->cgameViewangles[YAW], optYaw, std::max(1.0f, v::mod_strafebot_bhop_s.GetFloat()), smoothed_yaw);
+				CG_ApplySmoothing(clients->cgameViewangles[YAW], optYaw, v::mod_strafebot_bhop_s.GetFloat(), smoothed_yaw);
 			}
 			else if (dist2opt > 1 && dist2opt < 90)
-				CG_ApplySmoothing(clients->cgameViewangles[YAW], optYaw, std::max(1.0f, v::mod_strafebot_smooth.GetFloat()), smoothed_yaw);
+				CG_ApplySmoothing(clients->cgameViewangles[YAW], optYaw, v::mod_strafebot_smooth.GetFloat(), smoothed_yaw);
 			
 				
 		}
+
+        // Ground WA/WD can produce a 45-degree target correction on the first
+        // command. Rate-limit the camera turn instead of snapping to that target.
+        // At the preferred 333 FPS this allows about 3.24 degrees per frame
+        // (1080 degrees/second); at other FPS values the time-based rate is kept.
+        if (GROUND) {
+            dvar_s* fpsDvar = Dvar_FindMalleableVar("com_maxfps");
+            const float fps = (fpsDvar && fpsDvar->current.integer > 0)
+                ? (float)fpsDvar->current.integer : 333.0f;
+            const float maxYawStep = 1080.0f / fps;
+            const float currentYaw = clients->cgameViewangles[YAW];
+            const float yawDelta = AngleNormalize180(smoothed_yaw - currentYaw);
+            if (fabsf(yawDelta) > maxYawStep)
+                smoothed_yaw = currentYaw + (yawDelta > 0.0f ? maxYawStep : -maxYawStep);
+        }
 
 		setYaw(clients->cgameViewangles[YAW], smoothed_yaw);
 
