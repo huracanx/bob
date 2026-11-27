@@ -113,7 +113,7 @@ jobs:
           }
 
           # warn about missing menu images (mod refuses to load without them)
-          $required = @("Automation","Error_no_load","Game","Home","Jump Builder","Jump Preview","Jumping","Map","Rpg","Settings_no_load","Visuals")
+          $required = @("Automation","Error_no_load","Home","Jumping","Map","Rpg","Settings_no_load","Visuals")
           foreach ($img in $required) {
             if (-not (Get-ChildItem "package\1_kej\images" -Filter "$img.*" -ErrorAction SilentlyContinue)) {
               Write-Warning "missing menu image: 1_kej\images\$img.png (commit it under resources\)"
