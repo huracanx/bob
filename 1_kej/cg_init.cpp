@@ -74,13 +74,11 @@ void cg::CG_PrepareHooks()
 	PM_SlideMove_f					= (BOOL(*)(pmove_t*, pml_t*, int))															(0x414F40);
 	PM_OverBounce_f					= (void(*)())																				(0x414BBB);
 
-	Menu_PostParse_f				= (itemDef_s * (*)(menuDef_t * menu))														(0x5583E0);
-	UI_AddMenuList_f				= (int(*)(UiContext*, MenuList*))															(0x554F40);
 	r::R_DrawXModelSkinnedCached_h  = (HRESULT(*)(cg::GfxCmdBufSourceState*, cg::GfxCmdBufState*, cg::GfxModelSkinnedSurface*))	(0x646870);
 
 	r::Material_Register_FastFile_f	= (XAssetHeader(*)(const char* name))														(0x5F2A80);
 
-	CM_IsEdgeWalkable_f				= (bool(*)(int edgeIndex, int triIndex))													(0x4EFCD5);
+	CM_IsEdgeWalkable_f				= (void(*)())													(0x4EFCD5);
 
 	PM_ProjectVelocity_f			= (void(*)(vec3_t normal, vec3_t velIn, vec3_t velOut))										(0x40E330);
 	PM_BounceHeight_f				= (void(*)())																				(0x415863);
@@ -146,8 +144,6 @@ void cg::CG_InitHooks()
 	a->install(&(PVOID&)PmoveSingle_stub_f, PmoveSingle_stub);
 	a->install(&(PVOID&)PM_SlideMove_f, PM_SlideMove);
 	a->install(&(PVOID&)PM_OverBounce_f, PM_OverBounce_stub);
-	a->install(&(PVOID&)Menu_PostParse_f, Menu_PostParse);
-	a->install(&(PVOID&)UI_AddMenuList_f, UI_AddMenuList);
 	a->install(&(PVOID&)r::R_DrawXModelSkinnedCached_h, r::R_DrawXModelSkinnedCached);
 	a->install(&(PVOID&)CM_IsEdgeWalkable_f, CM_IsEdgeWalkable);
 	a->install(&(PVOID&)PM_ProjectVelocity_f, PM_ProjectVelocity);
@@ -195,8 +191,6 @@ void cg::CG_RemoveHooks()
 	a->remove(&(PVOID&)PmoveSingle_stub_f, PmoveSingle_stub);
 	a->remove(&(PVOID&)PM_SlideMove_f, PM_SlideMove);
 	a->remove(&(PVOID&)PM_OverBounce_f, PM_OverBounce_stub);
-	a->remove(&(PVOID&)Menu_PostParse_f, Menu_PostParse);
-	a->remove(&(PVOID&)UI_AddMenuList_f, UI_AddMenuList);
 	a->remove(&(PVOID&)r::R_DrawXModelSkinnedCached_h, r::R_DrawXModelSkinnedCached);
 	a->remove(&(PVOID&)CM_IsEdgeWalkable_f, CM_IsEdgeWalkable);
 	a->remove(&(PVOID&)PM_ProjectVelocity_f, PM_ProjectVelocity);

@@ -24,11 +24,7 @@ namespace cg
 	void Mod_GetAccelerationAngles(const bool rightmove, vec2_t accel_angles);
 	void Mod_DrawAngleHelper();
 	void Mod_DrawCurveSpeed();
-	void Mod_DrawJumpPath();
-	void Mod_DrawJumpHitbox();
-	void Mod_DrawJumpDirection();
 
-	void Mod_B_DrawPath();
 
 	inline fps_s mod_fps;
 }

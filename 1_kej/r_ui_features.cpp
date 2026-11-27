@@ -505,24 +505,9 @@ void Jump_Features()
 
 		if (ImGui::Checkbox("Bunnyhopping\t", &v::mod_bhop.evar->enabled)) {
 			v::mod_bhop.SetValue(v::mod_bhop.evar->enabled);
-			cg::Mod_EditMemory(false);
 
 		}
 
-		//////////////////////////////////////////
-		if (!v::mod_bhop.isEnabled())
-			ImGui::BeginDisabled(true);
-
-		ImGui::Text("\t");
-		ImGui::SameLine();
-		if (ImGui::Checkbox("No Delay", &v::mod_bhop_nodelay.evar->enabled)) {
-			v::mod_bhop_nodelay.SetValue(v::mod_bhop_nodelay.evar->enabled);
-			cg::Mod_EditMemory(false);
-
-		}
-
-		if (!v::mod_bhop.isEnabled())
-			ImGui::EndDisabled();
 
 		if (ImGui::Checkbox("Disallow halfbeat", &v::mod_disallow_hb.evar->enabled)) {
 			v::mod_disallow_hb.SetValue(v::mod_disallow_hb.isEnabled());
@@ -607,55 +592,10 @@ void Jump_Features()
 
 	//////////////////////////////////////////
 
-	//if (ImGui::CollapsingHeader("Jump view")) {
-	//	static bool isOpen = false;
-
-
-	//	ImGui::Text("\t");
-	//	ImGui::SameLine();
-	//	if (ImGui::Button("open editor")) {
-	//		isOpen = !isOpen;
-	//		dvar_s* g_gravity = Dvar_FindMalleableVar("g_gravity");
-
-	//		if (g_gravity) {
-	//			g_gravity->current.value = (isOpen == true) ? 0 : 800;
-	//		}
-	//	}
-
-	//	r::R_JumpView(isOpen);
-
-	//}
-
-
 }
 
-void r::R_OtherTab()
-{
 
-	ImGui::TextColored(ImVec4(0, 255, 0, 255), "These features aren't necessarily related to cj,\nbut rather tools to analyze/modify the game data");
-	ImGui::Separator();
-	ImGui::NewLine();
-
-	static bool inMenuView(false), inAssMan(false);
-	
-	ImGui::Text("Game\t");
-	r::UI_DrawGradientZone(ImVec2(225, 120));
-
-	ImGui::Text("\t");
-	ImGui::SameLine();
-	ImGui::BeginGroup();
-
-	if (ImGui::Button("Menu Browser"))
-		inMenuView = !inMenuView;
-	if (ImGui::Button("Asset Manager"))
-		inAssMan = !inAssMan;
-	ImGui::EndGroup();
-
-	R_GameMenuBrowser(inMenuView);
-	R_AssMan_Main(inAssMan);
-
-}
-void r::R_DrawMenuByName(const char* category, bool justPressed, bool& wantsEditor)
+void r::R_DrawMenuByName(const char* category, bool justPressed)
 {
 	ImGui::SameLine();
 	ImGui::BeginGroup();
@@ -667,30 +607,9 @@ void r::R_DrawMenuByName(const char* category, bool justPressed, bool& wantsEdit
 	else if (!strcmp("Home", category)) {
 		R_HomeTab();
 	}
-	else if (!strcmp("Game", category)) {
-		R_OtherTab();
-	}
-	else if (!strcmp("Jump Builder", category)) {
-		r::R_MenuStyle(0.5f);
-		R_JumpBuilder_Main();
-	}
-	else if (!strcmp("Jump Preview", category)) {
-		if (justPressed) {
-			analyzer.is_playback = false;
-			analyzer.SetFreeMode(false);
-			v::mod_jumpv_forcepos.evar->enabled = true;
-
-			if (clients->snap.ps.pm_type != PM_UFO)
-				Cbuf_AddText("ufo\n", 0);
-			dvar_s* g_gravity = Dvar_FindMalleableVar("g_gravity");
-
-			if (g_gravity) {
-				g_gravity->current.value = 0;
-			}
-			wantsEditor = !wantsEditor;
-		}
-		
-	}
+	
+	
+	
 
 	else if (!strcmp("Jumping", category)) {
 		Jump_Features();
@@ -710,7 +629,7 @@ void r::R_DrawMenuByName(const char* category, bool justPressed, bool& wantsEdit
 	}
 	ImGui::EndGroup();
 }
-void r::R_Features(bool& wantsEditor)
+void r::R_Features()
 {
 	const auto FindTextureByName = [](const char* name)->ImTextureID {
 		for (const auto& i : r::imagePairs) {
@@ -826,18 +745,7 @@ void r::R_Features(bool& wantsEditor)
 
 	std::string category = fs::removeFileExtension(r::imagePairs[ActiveIndex].first, 4);
 
-	R_DrawMenuByName(category.c_str(), justPressed, wantsEditor);
-
-	if (r::imagePairs[ActiveIndex].first.find("Preview") != std::string::npos)
-		ActiveIndex = UI_GetImageIndex("Home");
-
-
-	const bool isMenu = !category.compare("Jump Builder");
-	if (jbuilder.isEditing() && !isMenu)
-		jbuilder.SetEditMode(false);
-
-	else if (!jbuilder.isEditing() && isMenu)
-		jbuilder.SetEditMode(true);
+	R_DrawMenuByName(category.c_str(), justPressed);
 
 	childSize.x = rect.x + 10;
 	childSize.y = rect.y + 10;
@@ -848,23 +756,7 @@ void r::R_Features(bool& wantsEditor)
 	}
 }
 
-void r::R_JumpView_Help()
-{
-	ImGui::NewLine();
-	ImGui::Text("Keybinds");
-	ImGui::Separator();
 
-	//ImGui::ShowDemoWindow();
-
-	ImGui::BulletText("[SPACEBAR]	 - Toggle free mode");
-	ImGui::BulletText("[P]			- Toggle playback");
-	ImGui::BulletText("[C]			- Move to current frame");
-	ImGui::BulletText("[->]		   - Next Frame");
-	ImGui::BulletText("[<-]		   - Previous Frame");
-	ImGui::BulletText("[F]		    - Toggle Force Position");
-	//ImGui::BulletText("[M]		    - Toggle Menu Drawing");
-
-}
 void r::R_HomeTab()
 {
 	const auto FetchConfigs = [](std::vector<std::string>& cfgs)->bool {

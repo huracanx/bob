@@ -32,25 +32,13 @@ void Script_OnMenuResponse(int serverId, int menu, const char* response)
     }
     else if (!strcmp(menu_name, "cj")) {
 
-        if (!strcmp(response, "save"))
-            Script_OnPositionSaved();
-
-        else if (!strcmp(response, "load"))
+        if (!strcmp(response, "load"))
             Script_OnPositionLoaded();
 
-        else if (!strcmp(response, "record")) {
-            analyzer.SetRecordingMode(!analyzer.InRecordingMode());
-            Com_Printf(CON_CHANNEL_OBITUARY, "Recording mode %s\n", analyzer.InRecordingMode() == true ? "^2enabled" : "^1disabled");
-
-            if (!analyzer.InRecordingMode() && analyzer.isRecording())
-                analyzer.StopRecording();
-
-        }
+        
         else if (!strcmp(response, "autoslide")) {
             automation.keybindPressed = true;
         }
-        else if (!strcmp(response, "segment"))
-            analyzer.OnStartSegment();
 
         else if (!strcmp(response, "500fps"))
             Mod_A_OnCreate500FPS();
@@ -155,25 +143,10 @@ void Script_OnPositionLoaded()
 
 
     }
-    if (analyzer.isSegmenting()) {
-       // Com_Printf(CON_CHANNEL_OBITUARY, "segment frames: [%i]\n", analyzer.segData.size());
-
-        //analyzer.segData.erase(analyzer.segData.begin(), analyzer.segData.end());
-        //analyzer.segData.clear();
-        //analyzer.segData.resize(0);
-
-    }
-    analyzer.StopRecording();
-    analyzer.OnEndSegment();
+    
 
     memset(&cg::jumpanalyzer, 0, sizeof(cg::jumpanalyzer_s));
 
     memset(&automation, 0, sizeof(automation_s));
-
-}
-void Script_OnPositionSaved()
-{
-    analyzer.StopRecording();
-    analyzer.OnEndSegment();
 
 }

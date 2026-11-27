@@ -130,7 +130,7 @@ bool Evar_LoadFromFile(std::string directory)
 
 
 		var = fs::F_ReadUntil(f, ' ');
-		if (var == "N/A" || (!std::isalnum(var[0]))) {
+		if (var == "N/A" || (var.empty() || !std::isalnum(static_cast<unsigned char>(var[0])))) {
 			fs::F_ReadUntil(f, '\n');
 			continue;
 		}
@@ -138,11 +138,17 @@ bool Evar_LoadFromFile(std::string directory)
 
 		f.get(ch); // '='
 		f.get(ch); // ' '
-		evar_s* evar = _evar->evar;
+		if (!_evar || !_evar->evar) {
+            fs::F_ReadUntil(f, '\n');
+            continue;
+        }
+        evar_s* evar = _evar->evar;
 
 		if (evar) {
-			if (!evar->initialized)
-				continue;
+			if (!evar->initialized) {
+                fs::F_ReadUntil(f, '\n');
+                continue;
+            }
 			if (evar->type > evartype_t::EVAR_STRING) {
 				Evar_LoadVector(f, evar, vec);
 

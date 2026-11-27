@@ -17,20 +17,33 @@ void cg::PM_WalkMove(pmove_t* pm, pml_t* pml)
 	jumpanalyzer.frametime = pml->frametime;
 	jumpanalyzer.msec = pml->msec;
 
-	PM_WalkMove_f(pm, pml);
+	// Re-arm held jump only for grounded normal movement, before engine physics.
+    constexpr int jumpButton = 0x400;
+    const int savedOldButtons = pm->oldcmd.buttons;
+    const int savedJumpTime = pm->ps->jumpTime;
+    const bool repeatJump = v::mod_bhop.isEnabled() && !r::inputCaptured &&
+        pml->walking && pm->ps->pm_type == PM_NORMAL &&
+        (pm->cmd.buttons & jumpButton) != 0;
+    bool bypassDelay = false;
+    if (repeatJump) {
+        pm->oldcmd.buttons &= ~jumpButton;
+        bypassDelay = pm->cmd.serverTime - savedJumpTime < 500;
+        if (bypassDelay)
+            pm->ps->jumpTime = pm->cmd.serverTime - 500;
+    }
+    PM_WalkMove_f(pm, pml);
+    if (repeatJump) {
+        pm->oldcmd.buttons = savedOldButtons;
+        if (bypassDelay && pm->ps->jumpTime == pm->cmd.serverTime - 500)
+            pm->ps->jumpTime = savedJumpTime;
+    }
 	jumpanalyzer.walking = pml->walking;
 
 	Mod_A_AdjustRPG(pm, pml);
 
 
 
-	if (jbuilder.get_playerState) {
-		memcpy_s(&h_pm, sizeof(pmove_t), pm, sizeof(pmove_t));
-		memcpy_s(&h_pml, sizeof(pml_t), pml, sizeof(pml_t));
-		memcpy_s(&h_ps, sizeof(playerState_s), pm->ps, sizeof(playerState_s));
-		jbuilder.OnCreateNew();
-		jbuilder.get_playerState = false;
-	}
+	
 	if((pm->cmd.buttons & 8194) != 0 || (pm->oldcmd.buttons & 8194) != 0)
 		anim_can_use = true;
 
@@ -56,13 +69,7 @@ void cg::PM_AirMove(pmove_t* pm, pml_t* pml)
 
 
 
-	if (jbuilder.get_playerState) {
-		memcpy_s(&h_pm, sizeof(pmove_t), pm, sizeof(pmove_t));
-		memcpy_s(&h_pml, sizeof(pml_t), pml, sizeof(pml_t));
-		memcpy_s(&h_ps, sizeof(playerState_s), pm->ps, sizeof(playerState_s));
-		jbuilder.OnCreateNew();
-		jbuilder.get_playerState = false;
-	}
+	
 
 	//animations
 	static DWORD ms = Sys_MilliSeconds(), anim_time = 0;
@@ -131,7 +138,6 @@ void cg::PM_UFOMove(pmove_t* pmm, pml_t* pmll)
 	jumpanalyzer.commandTime = pm->ps->commandTime;
 	jumpanalyzer.serverTime = pm->cmd.serverTime;
 	jumpanalyzer.hugging_bounce = false;
-	//jbuilder.OnUpdatePosition();
 
 	return;
 }
@@ -161,10 +167,9 @@ void cg::Pmove(pmove_t* pm)
 	}
 	const int ref_fps = com_maxfps->current.integer;
 
-	int frametime = cls->frametime == 0 ? 1 : cls->frametime;
 	int _msec;
 
-	_msec = 1000.f / (ref_fps == 0 ? 1 : ref_fps);
+	_msec = 1000 / (ref_fps == 0 ? 1 : ref_fps);
 
 	if (_msec == NULL)
 		_msec = 1;
@@ -207,158 +212,15 @@ void cg::Pmove(pmove_t* pm)
 
 	}
 }
-void cg::Mod_JumpView(pmove_t* pm, pml_t* pml)
-{
-
-	static DWORD afkSnapshots = Sys_MilliSeconds();
-
-	jumpanalyzer.commandTime = pm->ps->commandTime;
-	jumpanalyzer.serverTime  = pm->cmd.serverTime;
 
 
-	if (analyzer.InRecordingMode() && !analyzer.isRecording()
-		&& !analyzer.isPreviewing() && analyzer.LastRecordingStoppedTime() + 200 < clients->snap.ps.commandTime
-		&& (pm->cmd.forwardmove != NULL || pm->cmd.rightmove != NULL) && VID_ACTIVE && !analyzer.isSegmenting()) {
-
-		analyzer.StartRecording();
-		afkSnapshots = Sys_MilliSeconds();
-	}
-
-	if (analyzer.isSegmenting()) {
-		if (analyzer.Segmenter_Prepare() > 200) {
-
-			jump_data* jData = analyzer.FetchFrameData(analyzer.segment_frame);
-
-			if (jData) {
-				const vec3_t null = { 0,0,0 };
-				VectorCopy(jData->origin, ps_loc->origin);
-				VectorCopy(null, ps_loc->velocity);
-
-				//CG_SetPlayerAngles(clients->cgameViewangles, jData->angles);
-			}
-		}
-
-
-	}
-
-	if (!analyzer.isRecording() && analyzer.isSegmenting() && !analyzer.segmenterData.isReady || !pm || !pml || !analyzer.isRecording() && !analyzer.isSegmenting())
-		return;
-
-
-
-	static int32_t old_cmdTime = pm->cmd.serverTime;
-
-	if (glm::distance((float)old_cmdTime, (float)pm->cmd.serverTime) > 100) //true on map restart
-		old_cmdTime = pm->cmd.serverTime;
-
-	static bool hasBounced, hasShotRPG, hasJumped;
-
-	if (analyzer.current_frame == 0) {
-		hasBounced = false;
-		hasShotRPG = false;
-		hasJumped  = false;
-	}else if (!hasBounced)
-		hasBounced = jumpanalyzer.bounceTime == pm->ps->commandTime;
-
-
-	if (!hasShotRPG) {
-		hasShotRPG = jumpanalyzer.weapon_cant_fire && (pm->ps->weapon == BG_FindWeaponIndexForName("rpg_mp") || pm->ps->weapon == BG_FindWeaponIndexForName("rpg_sustain_mp"));
-	}else if (hasShotRPG && clients->snap.ps.weaponstate != WEAPON_FIRING) { //this check makes sure it doesn't think other animations are considered as shooting 
-		hasShotRPG = false;
-	}
-
-
-	hasJumped = pm->cmd.serverTime - pm->ps->jumpTime < 10;
-
-	if (/*pm->ps->velocity[0] == NULL && pm->ps->velocity[1] == NULL && GROUND && !VID_ACTIVE || NOT_GROUND && */!VID_ACTIVE)
-		analyzer.PauseRecording();
-
-	static vec3_t	prevAngles = {pm->ps->viewangles[0], pm->ps->viewangles[1] , pm->ps->viewangles[2] }, 
-					prevOrigin = { pm->ps->origin[0], pm->ps->origin[1] , pm->ps->origin[2] };
-
-	const float angDist = glm::distance(glm::vec2(pm->ps->viewangles[0], pm->ps->viewangles[1]), glm::vec2(prevAngles[0], prevAngles[1]));
-
-	if (VectorCompare(pm->ps->origin, prevOrigin) == true && angDist < 10.f) {
-
-		//afkSnapshots++;
-
-		//if (GetAsyncKeyState(VK_PRIOR) & 1)
-		//	Com_Printf(CON_CHANNEL_OBITUARY, "angDist: %.6f\n", angDist/*Sys_MilliSeconds() - afkSnapshots*/);
-
-		if (afkSnapshots + 2000 < Sys_MilliSeconds()) {
-			analyzer.PauseRecording();
-			afkSnapshots = Sys_MilliSeconds();
-		}
-
-	}else {
-		if (VID_ACTIVE) {
-			analyzer.ContinueRecording();
-			
-		}
-		afkSnapshots = Sys_MilliSeconds();
-	}
-
-	VectorCopy(pm->ps->origin, prevOrigin);
-	VectorCopy(pm->ps->viewangles, prevAngles);
-
-	const float difference = (float)(1000.f / (cls->frametime == NULL ? 1 : cls->frametime)) / 125.f;
-
-	if (pm->cmd.serverTime > old_cmdTime + 2 * difference && !analyzer.RecordingPaused()) {
-		old_cmdTime = pm->cmd.serverTime;
-		if(!analyzer.isSegmenting())
-			Mod_SaveData(analyzer.data, pm, hasBounced, hasJumped, hasShotRPG);
-		else
-			Mod_SaveData(analyzer.segData, pm, hasBounced, hasJumped, hasShotRPG);
-	}
-}
-void cg::Mod_SaveData(std::vector<jump_data>& storage, pmove_t* pm, bool& hasBounced, bool& hasJumped, bool& hasShotRPG)
-{
-	jump_data jData;
-
-	VectorCopy(pm->ps->viewangles, jData.angles);
-	VectorCopy(pm->ps->origin, jData.origin);
-	VectorCopy(pm->ps->velocity, jData.velocity);
-	jData.forwardmove = pm->cmd.forwardmove;
-	jData.rightmove = pm->cmd.rightmove;
-	VectorCopy(pm->mins, jData.mins);
-	VectorCopy(pm->maxs, jData.maxs);
-	jData.rpg_fired = hasShotRPG;
-	jData.bounced = hasBounced;
-	jData.colliding = jumpanalyzer.velocity_clipped;
-	jData.jumped = hasJumped;
-
-	std::set<int> &rpg = analyzer.isSegmenting() ? analyzer.s_rpgFrames : analyzer.rpgFrames;
-	std::set<int> &jump = analyzer.isSegmenting() ? analyzer.s_jumpFrame : analyzer.jumpFrame;
-	std::set<int> &bounce = analyzer.isSegmenting() ? analyzer.s_bounceFrames : analyzer.bounceFrames;
-
-	//if (analyzer.isSegmenting()) {
-	//	if (hasShotRPG) { analyzer.s_rpgFrames.insert(analyzer.current_frame);			hasShotRPG = false;		}
-	//	if (hasBounced) { analyzer.s_bounceFrames.insert(analyzer.current_frame);			hasBounced = false; }
-	//	if (hasJumped)  { analyzer.s_jumpFrame.insert(analyzer.current_frame);				hasJumped = false;  }
-	//}else {
-	//	if (hasShotRPG) { analyzer.rpgFrames.insert(analyzer.current_frame);			hasShotRPG = false; }
-	//	if (hasBounced) { analyzer.bounceFrames.insert(analyzer.current_frame);			hasBounced = false; }
-	//	if (hasJumped) { analyzer.jumpFrame.insert(analyzer.current_frame);				hasJumped = false; }
-	//}
-
-	if (hasShotRPG) { rpg.insert(analyzer.current_frame);			hasShotRPG = false; }
-	if (hasBounced) { bounce.insert(analyzer.current_frame);		hasBounced = false; }
-	if (hasJumped)  { jump.insert(analyzer.current_frame);			hasJumped  = false; }
-
-	//if (hasCollided) {	current->collisionFrames.insert(current->current_frame);	hasCollided = false; }
-
-	jData.FPS = (int)(1000.f / (cls->frametime == NULL ? 1 : cls->frametime));
-
-	analyzer.SaveFrameData(storage, jData);
-	analyzer.OnFrameUpdate();
-}
 void cg::PM_ModCode(pml_t* pml, pmove_t* pm)
 {
 	//this part of the code is called after PM_Weapon()
 
-	Mod_JumpView(pm, pml);
+	jumpanalyzer.commandTime = pm->ps->commandTime;
+	jumpanalyzer.serverTime = pm->cmd.serverTime;
 	Mod_A_AutoSliding(pm, pml);
-	//jbuilder.OnUpdatePosition();
 	//Mod_A_Strafebot(pm);
 
 	return;
@@ -448,26 +310,8 @@ void cg::Mod_DetermineFPS(pmove_t* pm, pml_t* pml)
 		rightmove = false;
 
 
-	if (analyzer.isPreviewing() || jbuilder.isEditing()) {
-
-		jump_data* jData;
-		if (analyzer.isPreviewing())
-			jData = analyzer.FetchFrameData(analyzer.Segmenter_RecordingExists() ? analyzer.segData : analyzer.data, analyzer.preview_frame);
-		else
-			jData = jbuilder.FetchFrameData(jbuilder.preview_frame);
-
-
-		if (jData) {
-
-			if(jData->rightmove > 0)
-				rightmove = true;
-			else if (jData->rightmove < 0)
-				rightmove = false;
-		}
-
-	}
-	else
-		FPS_CalculateSingleBeatDirection(rightmove, cmd);
+	
+	FPS_CalculateSingleBeatDirection(rightmove, cmd);
 
 	fps_zones.fps125 = round((float)ps->speed / 8) + 10;
 	fps_zones.fps200 = round((float)ps->speed / 5) + 10;
@@ -543,7 +387,7 @@ void cg::PM_OverBounce(pmove_t* pm, pml_t* pml)
 	if (dot_speed * 0.25 > dot_div_frametime)
 	{
 		//Com_Printf(CON_CHANNEL_OBITUARY, "possible overbounce!\n");
-		float inGameFramesPerSecond = 1.0 / pml->frametime;
+		float inGameFramesPerSecond = 1.0f / pml->frametime;
 		pm->ps->velocity[0] = inGameFramesPerSecond * move[0];
 		pm->ps->velocity[1] = inGameFramesPerSecond * move[1];
 		pm->ps->velocity[2] = inGameFramesPerSecond * move[2];
@@ -615,23 +459,29 @@ __declspec(naked) void cg::PM_OverBounce_stub()
 		//retn;
 	}
 }
-bool cg::CM_IsEdgeWalkable(int edgeIndex, int triIndex)
+static bool __cdecl TerrainBouncesEnabled()
 {
-	//v::mod_terrain_bounces.evar->enabled
-	char isEnabled = v::mod_terrain_bounces.evar->enabled;
-	
-	if (isEnabled) {
-		__asm {
-			mov al, 0;
-			retn;
-		}
-		return; //ok
-	}
-	__asm {
-		mov al, dl;
-		retn;
-	}
-	
+    return v::mod_terrain_bounces.isEnabled();
+}
+// This hook replaces a register-based return sequence, not a C++ function call.
+__declspec(naked) void cg::CM_IsEdgeWalkable()
+{
+    __asm {
+        pushfd
+        pushad
+        call TerrainBouncesEnabled
+        test al, al
+        jz keepOriginal
+        mov byte ptr [esp + 28], 0
+        jmp done
+    keepOriginal:
+        mov al, byte ptr [esp + 20]
+        mov byte ptr [esp + 28], al
+    done:
+        popad
+        popfd
+        ret
+    }
 }
 void cg::BG_AddPredictableEventToPlayerstate(playerState_s* ps, unsigned __int8 newEvent, unsigned int eventParm)
 {
@@ -643,10 +493,10 @@ void cg::BG_AddPredictableEventToPlayerstate(playerState_s* ps, unsigned __int8 
 void cg::PM_ProjectVelocity(float* _velOut, float* _velIn, float* _normal)
 {
 
-	double _lengthSq2D; // st7
-	double newVelLength; // st6
-	double velLength; // st7
-	double _lengthScale; // st7
+	float _lengthSq2D; // st7
+	float newVelLength; // st6
+	float velLength; // st7
+	float _lengthScale; // st7
 	float lengthSq2D; // [esp+8h] [ebp-14h]
 	float newZ; // [esp+8h] [ebp-14h]
 	float _newZ; // [esp+8h] [ebp-14h]
@@ -707,10 +557,10 @@ void cg::PM_ProjectVelocity(float* _velOut, float* _velIn, float* _normal)
 }
 float cg::PM_CanBeBounced(float* normal, float* velIn)
 {
-	double _lengthSq2D; // st7
-	double newVelLength; // st6
-	double velLength; // st7
-	double _lengthScale; // st7
+	float _lengthSq2D; // st7
+	float newVelLength; // st6
+	float velLength; // st7
+	float _lengthScale; // st7
 	float lengthSq2D; // [esp+8h] [ebp-14h]
 	float newZ; // [esp+8h] [ebp-14h]
 	float _newZ; // [esp+8h] [ebp-14h]

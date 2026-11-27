@@ -15,7 +15,7 @@ namespace cg
 	inline void(__cdecl* PM_UFOMove_f)(pmove_t* pm, pml_t* pml);
 	inline void(__cdecl* PM_Weapon_f)(pml_t* pml, pmove_t* pm);
 	inline void(__cdecl* PM_OverBounce_f)();
-	inline bool(*CM_IsEdgeWalkable_f)(int edgeIndex, int triIndex);
+	inline void(*CM_IsEdgeWalkable_f)();
 	inline void (*PM_ProjectVelocity_f)(float* normal, float* velIn, float* velOut);
 	inline void (*PM_BounceHeight_f)();
 	inline void (*PM_BounceSteepness_f)();
@@ -30,7 +30,7 @@ namespace cg
 	void PM_AirMove(pmove_t* pm, pml_t* pml);
 	void PM_UFOMove(pmove_t* pm, pml_t* pml);
 	void PM_Weapon(pml_t* pml, pmove_t* pm);
-	bool CM_IsEdgeWalkable(int edgeIndex, int triIndex);
+	void CM_IsEdgeWalkable();
 	BOOL PM_SlideMove(pmove_t* pm, pml_t* pml, int gravity);
 
 	float PM_CanBeBounced(float* normal, float* velIn);
@@ -50,9 +50,9 @@ namespace cg
 
 	void BG_AddPredictableEventToPlayerstate(playerState_s* ps, unsigned __int8 newEvent, unsigned int eventParm);
 
-	inline pmove_t h_pm, *glob_pm;
-	inline pml_t h_pml, *glob_pml;
-	inline playerState_s h_ps;
+	inline pmove_t *glob_pm;
+	inline pml_t *glob_pml;
+
 
 
 

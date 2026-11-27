@@ -72,10 +72,10 @@ HRESULT r::R_DrawXModelSkinnedCached(GfxCmdBufSourceState* src, GfxCmdBufState* 
 
 		BYTE col[60]{};
 
-		R_GetD3D9TextureDataWithColor(v::mod_chams_col.GetVector(0) * 255, v::mod_chams_col.GetVector(1) * 255, v::mod_chams_col.GetVector(2) * 255, col);
+		R_GetD3D9TextureDataWithColor(static_cast<BYTE>(glm::clamp(v::mod_chams_col.GetVector(0), 0.0f, 1.0f) * 255.0f), static_cast<BYTE>(glm::clamp(v::mod_chams_col.GetVector(1), 0.0f, 1.0f) * 255.0f), static_cast<BYTE>(glm::clamp(v::mod_chams_col.GetVector(2), 0.0f, 1.0f) * 255.0f), col);
 		D3DXCreateTextureFromFileInMemory(cg::dx->device, (LPCVOID)&col, 60, &tex_noZ);
 
-		R_GetD3D9TextureDataWithColor(v::mod_chams_zcol.GetVector(0) * 255, v::mod_chams_zcol.GetVector(1) * 255, v::mod_chams_zcol.GetVector(2) * 255, col);
+		R_GetD3D9TextureDataWithColor(static_cast<BYTE>(glm::clamp(v::mod_chams_zcol.GetVector(0), 0.0f, 1.0f) * 255.0f), static_cast<BYTE>(glm::clamp(v::mod_chams_zcol.GetVector(1), 0.0f, 1.0f) * 255.0f), static_cast<BYTE>(glm::clamp(v::mod_chams_zcol.GetVector(2), 0.0f, 1.0f) * 255.0f), col);
 		D3DXCreateTextureFromFileInMemory(cg::dx->device, (LPCVOID)&col, 60, &tex_Z);
 
 		create = true;

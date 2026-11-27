@@ -1568,13 +1568,13 @@ void ImDrawList::AddBezierQuadratic(const ImVec2& p1, const ImVec2& p2, const Im
         return;
 
     PathLineTo(p1);
-    _Path.push_back(ImVec2(_Path[0].x + 0.001, _Path[0].y));
-    _Path.push_back(ImVec2(_Path[0].x + 0.002, _Path[0].y));
+    _Path.push_back(ImVec2(_Path[0].x + 0.001f, _Path[0].y));
+    _Path.push_back(ImVec2(_Path[0].x + 0.002f, _Path[0].y));
     //_Path.push_back(ImVec2(_Path[0].x + 2, _Path[0].y));
     PathBezierQuadraticCurveTo(p2, p3, num_segments);
 
     int highestX(0);
-    int bestX(0);
+    float bestX = _Path[0].x;
 
     for (int i = 0; i < _Path.size(); i++) {
         if (bestX < _Path[i].x) {
@@ -1584,8 +1584,8 @@ void ImDrawList::AddBezierQuadratic(const ImVec2& p1, const ImVec2& p2, const Im
         }
     }
 
-    _Path.push_back(ImVec2(_Path[highestX].x+0.001, _Path[_Path.size()-1].y));
-    _Path.push_back(ImVec2(_Path[highestX].x+0.002, _Path[_Path.size() - 1].y));
+    _Path.push_back(ImVec2(_Path[highestX].x+0.001f, _Path[_Path.size()-1].y));
+    _Path.push_back(ImVec2(_Path[highestX].x+0.002f, _Path[_Path.size() - 1].y));
 
 
     PathStroke(col, 0, thickness);

@@ -10,13 +10,8 @@ void cg::CL_Disconnect(int localClientNum)
 		cworld.terrain.clip_points.clear();
 		cworld.terrain.clip_points.resize(0);
 		r::ResetImFont = true;
-		if (analyzer.isRecording())
-			analyzer.StopRecording();
 
-		analyzer.ClearData();
-		jbuilder.ClearData();
 
-		Mod_EditMemory(true);
 
 		glob_pm = nullptr;
 		glob_pml = nullptr;

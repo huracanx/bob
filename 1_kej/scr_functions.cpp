@@ -297,7 +297,7 @@ void GScr_WriteToAddress()
 			return;
 		}
 	}
-	catch (std::exception& ex) {
+	catch (const std::exception&) {
 		Scr_ObjectError("invalid address format (must be i.e. FF FF FF FF FF)");
 		return;
 	}
@@ -394,7 +394,7 @@ void GScr_CanLoadPosition()
 		return;
 	}
 
-	Scr_AddInt(analyzer.isPreviewing() == false && jbuilder.isEditing() == false);
+	Scr_AddInt(true);
 
 }
 void Scr_LoadMethods()

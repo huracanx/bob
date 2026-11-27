@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
     <Filter Include="Source Files">
@@ -192,9 +192,7 @@
     <ClInclude Include="bg_weapon.hpp">
       <Filter>Source Files\bg</Filter>
     </ClInclude>
-    <ClInclude Include="mod_analyzer.hpp">
-      <Filter>Source Files\mod</Filter>
-    </ClInclude>
+
     <ClInclude Include="ImGui\imgui_impl_dx9.h">
       <Filter>Header Files\lib\ImGui</Filter>
     </ClInclude>
@@ -222,24 +220,16 @@
     <ClInclude Include="mod_automation.hpp">
       <Filter>Source Files\mod</Filter>
     </ClInclude>
-    <ClInclude Include="menu_items.hpp">
-      <Filter>Source Files\menu</Filter>
-    </ClInclude>
+
     <ClInclude Include="cmod_data.hpp">
       <Filter>Source Files\CMod</Filter>
     </ClInclude>
     <ClInclude Include="imgui_color_gradient.hpp">
       <Filter>Header Files\lib\ImGradient</Filter>
     </ClInclude>
-    <ClInclude Include="mod_jBuilder.hpp">
-      <Filter>Source Files\mod</Filter>
-    </ClInclude>
-    <ClInclude Include="r_ui_jbuilder.hpp">
-      <Filter>Source Files\render\ui</Filter>
-    </ClInclude>
-    <ClInclude Include="r_ui_assetmanager.hpp">
-      <Filter>Source Files\render\ui</Filter>
-    </ClInclude>
+
+
+
     <ClInclude Include="u_key.h">
       <Filter>Source Files\sys</Filter>
     </ClInclude>
@@ -356,15 +346,8 @@
     <ClCompile Include="bg_weapon.cpp">
       <Filter>Source Files\bg</Filter>
     </ClCompile>
-    <ClCompile Include="mod_analyzer.cpp">
-      <Filter>Source Files\mod</Filter>
-    </ClCompile>
-    <ClCompile Include="r_ui_jumpanalyzer.cpp">
-      <Filter>Source Files\render\ui</Filter>
-    </ClCompile>
-    <ClCompile Include="mod_analyzer_io.cpp">
-      <Filter>Source Files\mod</Filter>
-    </ClCompile>
+
+
     <ClCompile Include="ImGui\imgui_demo.cpp">
       <Filter>Header Files\lib\ImGui</Filter>
     </ClCompile>
@@ -392,27 +375,16 @@
     <ClCompile Include="r_ui_automation.cpp">
       <Filter>Source Files\render\ui</Filter>
     </ClCompile>
-    <ClCompile Include="menu_items.cpp">
-      <Filter>Source Files\menu</Filter>
-    </ClCompile>
-    <ClCompile Include="r_ui_menus.cpp">
-      <Filter>Source Files\render\ui</Filter>
-    </ClCompile>
+
     <ClCompile Include="cmod_data.cpp">
       <Filter>Source Files\CMod</Filter>
     </ClCompile>
     <ClCompile Include="imgui_color_gradient.cpp">
       <Filter>Header Files\lib\ImGradient</Filter>
     </ClCompile>
-    <ClCompile Include="mod_jBuilder.cpp">
-      <Filter>Source Files\mod</Filter>
-    </ClCompile>
-    <ClCompile Include="r_ui_jbuilder.cpp">
-      <Filter>Source Files\render\ui</Filter>
-    </ClCompile>
-    <ClCompile Include="r_ui_assetmanager.cpp">
-      <Filter>Source Files\render\ui</Filter>
-    </ClCompile>
+
+
+
     <ClCompile Include="u_key.cpp">
       <Filter>Source Files\sys</Filter>
     </ClCompile>

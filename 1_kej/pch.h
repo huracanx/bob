@@ -121,11 +121,9 @@ typedef vec_t vec4_t[4];
 #include "cg_init.hpp"
 
 #include "mod_vis.hpp"
-#include "mod_analyzer.hpp"
 
 #include "mod_jumps.hpp"
 #include "mod_automation.hpp"
-#include "mod_jBuilder.hpp"
 
 #include "cg_angle.hpp"
 #include "cg_main.hpp"
@@ -152,14 +150,11 @@ typedef vec_t vec4_t[4];
 #include "scr_obj.hpp"
 #include "scr_menuresponse.hpp"
 
-#include "menu_items.hpp"
 
 #include "r_init.hpp"
 #include "r_drawtools.hpp"
 #include "r_world.hpp"
 #include "r_ui.hpp"
-#include "r_ui_jbuilder.hpp"
-#include "r_ui_assetmanager.hpp"
 
 #include "rb_endscene.hpp"
 #include "rb_world.hpp"

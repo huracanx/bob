@@ -115,7 +115,6 @@ void cg::CG_DllEntry()
 
             cg::CG_InitHooks();
             Cmd_Init();
-            cg::Mod_EditMemory(false);
             if (!r::R_Init()) {
                 fs::Log_Write(LOG_FATAL, "failed to hook renderer\n");
             }

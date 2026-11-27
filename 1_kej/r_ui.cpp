@@ -283,58 +283,18 @@ bool r::R_OpenMenu(IDirect3DDevice9* pDevice)
 	}
 	if (r::should_draw_menu) {
 		
-		static bool wantsEditor = false;
+        R_MenuStyle();
+        ImGui::Begin("[ALPHA] 1_kej_v2 - github.com/kejjjjj/", &r::should_draw_menu, ImGuiWindowFlags_AlwaysAutoResize);
+        ImGui::SetWindowFontScale(1.2f);
+        const ImGuiViewport* viewport = ImGui::GetMainViewport();
+        ImGui::SetWindowSize(ImVec2(viewport->Size.x / 3.f, viewport->Size.y / 3.5f), ImGuiCond_FirstUseEver);
+        if (r::should_draw_menu) R_Features();
+        ImGui::End();
+        if (!r::should_draw_menu || ImGui::GetIO().KeysDownDuration[VK_ESCAPE] >= 0.0f) {
+            r::should_draw_menu = false;
+            R_RemoveInput(false);
+        }
 
-		if (!wantsEditor) {
-			if(!jbuilder.isEditing())
-				R_MenuStyle();
-			ImGui::Begin("[ALPHA] 1_kej_v2 - github.com/kejjjjj/", &r::should_draw_menu, ImGuiWindowFlags_AlwaysAutoResize);
-
-			ImGui::SetWindowFontScale(1.2f);
-
-			const ImGuiViewport* viewport = ImGui::GetMainViewport();
-
-			ImGui::SetWindowSize(ImVec2(viewport->Size.x / 3.f, viewport->Size.y / 3.5f), ImGuiCond_FirstUseEver);
-			if (r::should_draw_menu)
-				R_Features(wantsEditor);
-
-			ImGui::End();
-		}
-		else {
-			//wantsEditor = true;
-
-
-
-			R_JumpView(wantsEditor);
-
-			if (!wantsEditor)
-				r::should_draw_menu = false;
-
-
-
-		}
-
-		if (!r::should_draw_menu || ImGui::GetIO().KeysDownDuration[VK_ESCAPE] >= 0.0 && should_draw_menu) {
-			if (clients->snap.ps.pm_type == PM_UFO && analyzer.isPreviewing())
-				Cbuf_AddText("ufo\n", 0);
-
-			should_draw_menu = false;
-			wantsEditor = false;
-			std::cout << "calling R_RemoveInput() from R_OpenMenu()\n";
-			R_RemoveInput(r::should_draw_menu);
-			analyzer.setPreviewState(false);
-
-			dvar_s* g_gravity = Dvar_FindMalleableVar("g_gravity");
-
-			if (g_gravity) {
-				g_gravity->latched.value = 800;
-				g_gravity->current.value = 800;
-			}
-			jbuilder.SetEditMode(false);
-			Dvar_FindMalleableVar("com_maxfps")->current.integer = 250;
-			//CG_SetPlayerAngles(clients->viewangles, r::angles_before_menu);
-
-		}
 	}
 
 	return true;

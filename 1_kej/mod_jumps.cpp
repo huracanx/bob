@@ -14,7 +14,7 @@ void cg::Mod_HitAnalyzer(pmove_t* pm, pml_t* pml)
 		wait_ground = false;
 
 		if (v::mod_jumpanalyzer.isEnabled()) {
-			if (cg::jumpanalyzer.hasJumped && cg::jumpanalyzer.hasBounced && !analyzer.isPreviewing()) {
+			if (cg::jumpanalyzer.hasJumped && cg::jumpanalyzer.hasBounced) {
 				Com_Printf(CON_CHANNEL_OBITUARY, "^6jump velocity: ^2%i\n", cg::jumpanalyzer.jumpVelocity);
 				Com_Printf(CON_CHANNEL_OBITUARY, "^6bounce velocity: ^2%i\n", cg::jumpanalyzer.bounceVelocity);
 			}
@@ -38,7 +38,7 @@ void cg::Mod_HitAnalyzer(pmove_t* pm, pml_t* pml)
 
 				const int32_t difference = hit_velocity - old_vel;
 
-				if (v::mod_hitanalyzer.isEnabled() && !analyzer.isPreviewing())
+				if (v::mod_hitanalyzer.isEnabled())
 					Com_Printf(CON_CHANNEL_OBITUARY, "^2%i\n", difference);
 			}
 

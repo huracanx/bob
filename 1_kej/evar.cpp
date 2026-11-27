@@ -12,7 +12,7 @@ evar_o* Evar_FindByName(const char* name)
 			return evar;
 
 	}
-	return evar; //returns a nullptr on purpose
+	return nullptr;
 }
 void evar_o::Register(const char* name, evartype_t type, float* defaultValue, uint32_t size, bool save) //arrays
 {
@@ -276,7 +276,6 @@ void Evar_Setup()
 	v::mod_hitanalyzer.Register		("1_kej_hitanalyzer",				evartype_t::EVAR_BOOL,		(float)0,				true);
 	v::mod_jumpanalyzer.Register	("1_kej_jumpanalyzer",				evartype_t::EVAR_BOOL,		(float)0,				true);
 	v::mod_bhop.Register			("1_kej_bhop",						evartype_t::EVAR_BOOL,		(float)0,				true);
-	v::mod_bhop_nodelay.Register	("1_kej_bhop_nodelay",				evartype_t::EVAR_BOOL,		(float)0,				true);
 	v::mod_elevatable_surf.Register	("1_kej_elevatable_surf",			evartype_t::EVAR_BOOL, 		(float)0,				true);
 	v::mod_bounceable_surf.Register	("1_kej_bounceable_surf",			evartype_t::EVAR_BOOL,		(float)0,				true);
 	v::mod_pmove_fixed.Register		("1_kej_pmove_fixed",				evartype_t::EVAR_BOOL,		(float)0,				true);
@@ -293,10 +292,6 @@ void Evar_Setup()
 	v::mod_showFPS.Register			("1_kej_showFPS",					evartype_t::EVAR_BOOL,		(float)0,				true);
 	v::mod_FPS_cylindrical.Register	("1_kej_FPS_cylindrical",			evartype_t::EVAR_BOOL,		(float)0,				true);
 
-	v::mod_jumpv_forcepos.Register	("1_kej_jumpv_forcepos",			evartype_t::EVAR_BOOL,		(float)0,				false);
-	v::mod_jumpv_path.Register		("1_kej_jumpv_path",				evartype_t::EVAR_BOOL,		(float)0,				true);
-	v::mod_jumpv_hitbox.Register	("1_kej_jumpv_hitbox",				evartype_t::EVAR_BOOL,		(float)0,				true);
-	v::mod_jumpv_segtime.Register	("1_kej_jumpv_segtime",				evartype_t::EVAR_FLOAT,		(float)2,				true);
 
 
 	v::mod_125col.Register			("1_kej_125col",					evartype_t::EVAR_VEC4,		vec4_t{ 0,1,0,1 },		true);
@@ -308,7 +303,6 @@ void Evar_Setup()
 	//automation
 	v::mod_autoFPS.Register			("1_kej_autofps",					evartype_t::EVAR_BOOL,		(float)0,				true);
 	v::mod_autoFPS_long125.Register ("1_kej_autofps_long125",			evartype_t::EVAR_BOOL,		(float)1,				true);
-	v::mod_autoFPS_space333.Register("1_kej_autofps_space333",			evartype_t::EVAR_BOOL,		(float)0,				true);
 	v::mod_autoFPS_hug500.Register	("1_kej_autofps_hug500",			evartype_t::EVAR_INT,		(float)0,				true);
 	v::mod_auto500_enabled.Register	("1_kej_auto500_enabled",			evartype_t::EVAR_BOOL,		(float)0,				true);
 
@@ -322,11 +316,6 @@ void Evar_Setup()
 	v::mod_autoslide.Register		("1_kej_autoslide",					evartype_t::EVAR_INT,		(float)0,				true);
 	v::mod_autoanglerpg.Register	("1_kej_autoanglerpg",				evartype_t::EVAR_BOOL,		(float)0,				true);
 
-	v::mod_jbuild_hitbox.Register	("1_kej_jbuild_hitbox",				evartype_t::EVAR_BOOL,		(float)1,				true);
-	v::mod_jbuild_wasd.Register		("1_kej_jbuild_wasd",				evartype_t::EVAR_BOOL,		(float)1,				true);
-	v::mod_jbuild_forcepos.Register	("1_kej_jbuild_forcepos",			evartype_t::EVAR_BOOL,		(float)0,				false);
-	v::mod_jbuild_jvel.Register		("1_kej_jbuild_jvel",				evartype_t::EVAR_FLOAT,		(float)360,				false);
-	v::mod_jbuild_sprint.Register	("1_kej_jbuild_sprint",				evartype_t::EVAR_BOOL,		(float)1,				false);
 
 
 	v::mod_chams.Register			("1_kej_chams",						evartype_t::EVAR_BOOL,		(float)0,				true);

@@ -37,8 +37,6 @@ namespace cg {
 	int32_t Mod_RecommendedFPS(float yaw, char forwardmove, char rightmove);
 
 	void Mod_DetermineFPS(pmove_t* pm, pml_t* pml);
-	void Mod_JumpView(pmove_t* pm, pml_t* pml);
-	void Mod_SaveData(std::vector<jump_data>& storage, pmove_t* pm, bool& hasBounced, bool& hasJumped, bool& hasShotRpg);
 	void Mod_BounceCalculator();
 	void Mod_BounceCalculator_Create();
 	void Mod_DisallowHalfbeat();

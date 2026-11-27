@@ -276,6 +276,13 @@ fs::FS_CreatePairsForTextures()
 	for (const auto& i : files) {
 
 		name = F_GetFileName(i);
+        ext = GetFileExtension(name);
+        if (ext != ".png" && ext != ".jpg") continue;
+        const std::string category = removeFileExtension(name, ext.size());
+        const char* supported[] = { "Automation", "Error_no_load", "Home", "Jumping", "Map", "Rpg", "Settings_no_load", "Visuals" };
+        bool known = false;
+        for (const char* entry : supported) if (category == entry) { known = true; break; }
+        if (!known || index >= r::tabs.size()) continue;
 		ext = GetFileExtension(name);
 		//name = removeFileExtension(name, ext.size());
 
@@ -316,13 +323,10 @@ bool fs::F_FileAlreadyExists(const std::string& directory, const std::string& fi
 }
 bool fs::FS_AllNecessaryImagesExist()
 {
-	const char* should_exist[11] = {
+	const char* should_exist[8] = {
 		"Automation",
 		"Error_no_load",
-		"Game",
 		"Home",
-		"Jump Builder",
-		"Jump Preview",
 		"Jumping",
 		"Map",
 		"Rpg",

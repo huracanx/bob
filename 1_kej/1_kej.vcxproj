@@ -73,10 +73,12 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <LinkIncremental>true</LinkIncremental>
     <OutDir>$(SolutionDir)build\$(Configuration)\</OutDir>
+    <TargetExt>.asi</TargetExt>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <LinkIncremental>false</LinkIncremental>
     <OutDir>$(SolutionDir)build\$(Configuration)\</OutDir>
+    <TargetExt>.asi</TargetExt>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <LinkIncremental>true</LinkIncremental>
@@ -100,7 +102,7 @@
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <EnableUAC>false</EnableUAC>
-      <OutputFile>$(OutDir)1_kej.asi</OutputFile>
+      <OutputFile>$(TargetPath)</OutputFile>
       <AdditionalLibraryDirectories>$(DXSDK_DIR)/Lib/x86;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <AdditionalDependencies>Winmm.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
@@ -125,7 +127,7 @@
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <EnableUAC>false</EnableUAC>
-      <OutputFile>$(OutDir)1_kej.asi</OutputFile>
+      <OutputFile>$(TargetPath)</OutputFile>
       <AdditionalLibraryDirectories>$(DXSDK_DIR)/Lib/x86;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <AdditionalDependencies>Winmm.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
@@ -197,10 +199,7 @@
     <ClInclude Include="ImGui\imstb_truetype.h" />
     <ClInclude Include="imgui_color_gradient.hpp" />
     <ClInclude Include="koukku.hpp" />
-    <ClInclude Include="menu_items.hpp" />
-    <ClInclude Include="mod_analyzer.hpp" />
     <ClInclude Include="mod_automation.hpp" />
-    <ClInclude Include="mod_jBuilder.hpp" />
     <ClInclude Include="mod_jumps.hpp" />
     <ClInclude Include="mod_vis.hpp" />
     <ClInclude Include="pch.h" />
@@ -210,8 +209,6 @@
     <ClInclude Include="r_drawtools.hpp" />
     <ClInclude Include="r_init.hpp" />
     <ClInclude Include="r_ui.hpp" />
-    <ClInclude Include="r_ui_assetmanager.hpp" />
-    <ClInclude Include="r_ui_jbuilder.hpp" />
     <ClInclude Include="r_world.hpp" />
     <ClInclude Include="scr_cmd.hpp" />
     <ClInclude Include="scr_functions.hpp" />
@@ -271,11 +268,7 @@
     </ClCompile>
     <ClCompile Include="imgui_color_gradient.cpp" />
     <ClCompile Include="koukku.cpp" />
-    <ClCompile Include="menu_items.cpp" />
-    <ClCompile Include="mod_analyzer.cpp" />
-    <ClCompile Include="mod_analyzer_io.cpp" />
     <ClCompile Include="mod_automation.cpp" />
-    <ClCompile Include="mod_jBuilder.cpp" />
     <ClCompile Include="mod_jumps.cpp" />
     <ClCompile Include="mod_vis.cpp" />
     <ClCompile Include="pch.cpp">
@@ -290,12 +283,8 @@
     <ClCompile Include="r_drawtools.cpp" />
     <ClCompile Include="r_init.cpp" />
     <ClCompile Include="r_main.cpp" />
-    <ClCompile Include="r_ui_assetmanager.cpp" />
     <ClCompile Include="r_ui_automation.cpp" />
     <ClCompile Include="r_ui_features.cpp" />
-    <ClCompile Include="r_ui_jbuilder.cpp" />
-    <ClCompile Include="r_ui_jumpanalyzer.cpp" />
-    <ClCompile Include="r_ui_menus.cpp" />
     <ClCompile Include="r_world.cpp" />
     <ClCompile Include="scr_cmd.cpp" />
     <ClCompile Include="scr_functions.cpp" />

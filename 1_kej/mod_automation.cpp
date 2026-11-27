@@ -101,7 +101,7 @@ void cg::Mod_A_AutoFPS()
 	if (!v::mod_autoFPS.isEnabled() && !box500.boxExists && v::mod_autoFPS_hug500.GetInt() == 0)
 		return;
 
-	if (analyzer.isPreviewing() || !VID_ACTIVE || jbuilder.isGeneratingMovement())
+	if (!VID_ACTIVE)
 		return;
 
 	dvar_s* com_maxfps = Dvar_FindMalleableVar("com_maxfps");
@@ -140,30 +140,9 @@ void cg::Mod_A_AutoFPS()
 		fps = 500;
 	}
 
-	// autoFPS base logic
-	if (v::mod_autoFPS.isEnabled() && !box500.use500) {
-		if (GROUND) {
-			// On ground:
-			//  - holding SPACE with space333 disabled -> 125 (max jump height)
-			//  - everything else                        -> 333 (PRIORITY: strafe-gain)
-			//
-			// Previously this was unconditionally 125 on ground, which made fps
-			// stuck at 125 on map load and while running around without jumping,
-			// and prevented the player from using 333 strafe-gain fps on ground.
-			if (spaceHeld && !v::mod_autoFPS_space333.isEnabled()) {
-				fps = 125;
-			} else {
-				fps = 333;
-			}
-		} else {
-			// In air:
-			//  - holding SPACE with space333 enabled -> 333 (bhop)
-			//  - otherwise                           -> recommendedFPS (velocity-based)
-			if (spaceHeld && v::mod_autoFPS_space333.isEnabled()) {
-				fps = 333;
-			}
-		}
-	}
+	// Ground jump height and ground strafe gain.
+	if (v::mod_autoFPS.isEnabled() && !box500.use500 && GROUND)
+		fps = spaceHeld ? 125 : 333;
 
 	com_maxfps->current.integer = fps;
 }
@@ -226,7 +205,7 @@ void cg::Mod_A_AutoSliding(pmove_t* pmove, pml_t* pml)
 		const DWORD ms = Sys_MilliSeconds();
 
 
-		if ((old_ms + (move->jump == true && v::mod_bhop_nodelay.isEnabled() ? 1 : 100)) < ms) { //allow 100ms to slide and if jump is not held
+		if ((old_ms + (move->jump == true && v::mod_bhop.isEnabled() ? 1 : 100)) < ms) { //allow 100ms to slide and if jump is not held
 			old_ms = ms;
 			automation.currentlySliding = false;
 			a->write_addr(0x410660, "\x83", 1);

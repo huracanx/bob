@@ -22,18 +22,9 @@ HRESULT __stdcall r::draw_func(IDirect3DDevice9* pDevice)
 
 				Mod_DrawWorldAxes();
 
-				if (analyzer.RecordingExists() && !analyzer.isRecording() && analyzer.isPreviewing()) {
-					Mod_DrawJumpPath();
-					Mod_DrawJumpHitbox();
-					Mod_DrawJumpDirection();
+				
 
-				}
-
-				if (jbuilder.isEditing() && !jbuilder.segments.empty()) {
-					Mod_B_DrawPath();
-
-
-				}
+				
 
 				Mod_DrawFPSHelpers();
 				Mod_A_500FPS();
@@ -51,11 +42,9 @@ void __cdecl r::CG_DrawActive()
 {
     if (r::inputCaptured) {
         r::R_ClearMouseDelta();
-        if (!analyzer.isPreviewing() && !jbuilder.isEditing())
-            VectorCopy(r::capturedInputAngles, clients->viewangles);
+        VectorCopy(r::capturedInputAngles, clients->viewangles);
     }
 	if (mglobs.isUsing) {
-		Mod_DrawVelocity();
 		Mod_DrawCoordinates();
 		Mod_DrawSurfaceInfo();
 		/*Mod_DrawFPSHelpers();*/
@@ -73,7 +62,8 @@ void __cdecl r::CG_DrawActive()
 			Mod_DisallowHalfbeat();
 		}
 		
-		if (vangle_que.yes) {
+        Mod_DrawVelocity();
+		if (vangle_que.yes && !r::inputCaptured) {
 
 			CG_SetPlayerAngles(vangle_que.src, vangle_que.dst);
 			vangle_que.yes = false;

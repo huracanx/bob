@@ -2,17 +2,7 @@
 
 void cg::Mod_DrawEvents()
 {
-	if (analyzer.isRecording() || analyzer.isSegmenting()) {
-		const bool isPaused = analyzer.RecordingPaused();
-
-		char buffer[30];
-
-		const char* const mode = analyzer.isSegmenting() == true ? "Segmenting" : "Recording";
-
-		sprintf_s(buffer, "%s", isPaused == false ? mode : "Paused");
-
-		r::R_DrawText(buffer, 0, 800, 2, 2, 0, isPaused == false ? vec4_t{ 1,1,1,1 } : vec4_t{ 1,0,0,1 }, 0);
-	}
+	
 	if (automation.pendingSlide) {
 
 		Material* fxMaterial = r::R_RegisterMaterial("decode_characters");
@@ -32,25 +22,7 @@ void cg::Mod_DrawVelocity()
 
 	int32_t velocity;
 
-	if (analyzer.isPreviewing() && (analyzer.RecordingExists() || analyzer.Segmenter_RecordingExists()) || jbuilder.isEditing()) {
-		jump_data* jData;
-		
-		if(analyzer.isPreviewing() && (analyzer.RecordingExists() || analyzer.Segmenter_RecordingExists()))
-			jData = analyzer.FetchFrameData(analyzer.Segmenter_RecordingExists() ? analyzer.segData : analyzer.data, analyzer.preview_frame);
-		else
-			jData = jbuilder.FetchFrameData(jbuilder.preview_frame);
-
-		float x{}, y{};
-
-		if (jData) {
-			x = jData->velocity[0];
-			y = jData->velocity[1];
-		}
-
-		velocity = (int32_t)glm::length(glm::vec2(x, y));
-	}
-	else 
-		velocity = (int32_t)glm::length(glm::vec2(cg::clients->cgameVelocity[0], cg::clients->cgameVelocity[1]));
+	velocity = (int32_t)glm::length(glm::vec2(cg::clients->cgameVelocity[0], cg::clients->cgameVelocity[1]));
 
 	static int32_t velocity_prev_frame = velocity;
 
@@ -85,8 +57,11 @@ void cg::Mod_DrawVelocity()
 	char buffer[20];
 	if(!v::mod_showFPS.isEnabled() || clc.demoplaying && v::mod_showFPS.isEnabled())
 		sprintf_s(buffer, "%i", velocity);
-	else
-		sprintf_s(buffer, "%i\n%i %s", velocity, jumpanalyzer.recommendedFPS, GetAsyncKeyState(VK_SPACE) < 0 == true && v::mod_autoFPS_space333.isEnabled() && VID_ACTIVE ? "(hold 333)" : "");
+	else {
+		const auto* fps = Dvar_FindMalleableVar("com_maxfps");
+		if (fps) sprintf_s(buffer, "%i\n%i", velocity, fps->current.integer);
+		else sprintf_s(buffer, "%i\nN/A", velocity);
+	}
 
 	buffer[19] = '\0';
 	//r::R_DrawText(buffer, "fonts/normalfont", v::mod_velometer.evar->arrayValue[1], v::mod_velometer.evar->arrayValue[2], v::mod_velometer.evar->arrayValue[3], v::mod_velometer.evar->arrayValue[3], 0, (float*)&col, 1);
@@ -230,23 +205,7 @@ void cg::Mod_DrawFPSHelpers()
 	const float fov = _fov->current.value * fovscale->current.value * v::mod_fps_transferz.evar->arrayValue[3];
 	bool isInverted = clients->cgameViewangles[YAW] < fov || clients->cgameViewangles[YAW] > 180.f - fov;
 
-	if (analyzer.isPreviewing() || jbuilder.isEditing()) {
-
-		jump_data* jData;
-		if (analyzer.isPreviewing())
-			jData = analyzer.FetchFrameData(analyzer.Segmenter_RecordingExists() ? analyzer.segData : analyzer.data, analyzer.preview_frame);
-		else
-			jData = jbuilder.FetchFrameData(jbuilder.preview_frame);
-
-
-		if (jData) {
-			aa = atan2(-(int)jData->rightmove, (int)jData->forwardmove) * 57.2957795f;
-			yaw = jData->angles[YAW] > 0 ? jData->angles[YAW] : 180.f - jData->angles[YAW] * -1;
-			rightmove = jData->rightmove > 0;
-			isInverted = jData->angles[YAW] < fov || jData->angles[YAW] > 180.f - fov;
-		}
-
-	}
+	
 
 	aa > 0 ? aa -= 45 : aa += 45;
 
@@ -447,29 +406,8 @@ void cg::Mod_DrawVelocityDirection()
 
 
 	vec3_t orgPos;
-	const jump_data* jData = analyzer.FetchFrameData(analyzer.Segmenter_RecordingExists() ? analyzer.segData : analyzer.data, analyzer.preview_frame);
-
-	if (analyzer.isPreviewing()) {
-
-		if (jData) {
-			VectorCopy(jData->origin, orgPos);
-		}
-		else
-			VectorCopy(clients->cgameOrigin, orgPos);
-	}
-	else
-		VectorCopy(clients->cgameOrigin, orgPos);
-
+	VectorCopy(clients->cgameOrigin, orgPos);
 	float velAngle = atan2(clients->cgameVelocity[1], clients->cgameVelocity[0]) * 180.f / PI;
-
-	if (analyzer.isPreviewing()) {
-
-		if (jData) {
-			velAngle = atan2(jData->velocity[1], jData->velocity[0]) * 180.f / PI;
-
-		}
-
-	}
 
 	vec3_t angles = { 0, velAngle, 0 }, end;
 	AnglesToForward(angles, orgPos, 100, end);
@@ -488,17 +426,7 @@ void cg::Mod_DrawWorldAxes()
 
 	vec3_t orgPos;
 
-	if (analyzer.isPreviewing()) {
-		const jump_data* jData = analyzer.FetchFrameData(analyzer.Segmenter_RecordingExists() ? analyzer.segData : analyzer.data, analyzer.preview_frame);
-
-		if (jData) {
-			VectorCopy(jData->origin, orgPos);
-		}
-		else
-			VectorCopy(clients->cgameOrigin, orgPos);
-	}else
-		VectorCopy(clients->cgameOrigin, orgPos);
-
+	VectorCopy(clients->cgameOrigin, orgPos);
 
 	VectorCopy(orgPos, forwardStart);
 	VectorCopy(orgPos, start);
@@ -565,27 +493,8 @@ void cg::Mod_DrawWorldAxes()
 		rightmove = false;
 
 	FPS_CalculateSingleBeatDirection(rightmove, cmd);
-	jump_data* jData = analyzer.FetchFrameData(analyzer.Segmenter_RecordingExists() ? analyzer.segData : analyzer.data, analyzer.preview_frame);
-	if (analyzer.isPreviewing()) {
-
-		if (jData) {
-			rightmove = jData->rightmove > 0;
-		}
-
-	}
-
 	float delta;
-	float opt;
-	if(!analyzer.isPreviewing())
-		opt = R_getOptAngle(rightmove, delta);
-
-	else {
-		if (jData)
-			opt = getOptForAnalyzer(jData, GROUND);
-		else
-			opt = R_getOptAngle(rightmove, delta);
-
-	}
+	float opt = R_getOptAngle(rightmove, delta);
 	vec3_t opt3, nearestAxis3;
 	AnglesToForward(vec3_t{ 0, opt, 0 }, forwardStart, DIRECTION_LENGTH, opt3);
 
@@ -603,20 +512,7 @@ void cg::Mod_DrawWorldAxes()
 void cg::Mod_GetAccelerationAngles(const bool rightmove, vec2_t out)
 {
 	static float delta;
-	const float yaw = clients->cgameViewangles[YAW];
-	jump_data* jData = analyzer.FetchFrameData(analyzer.Segmenter_RecordingExists() ? analyzer.segData : analyzer.data, analyzer.preview_frame);
-
-	float opt;
-	if (!analyzer.isPreviewing())
-		opt = R_getOptAngle(rightmove, delta);
-
-	else {
-		if (jData)
-			opt = getOptForAnalyzer(jData, GROUND);
-		else
-			opt = R_getOptAngle(rightmove, delta);
-
-	}
+	float opt = R_getOptAngle(rightmove, delta);
 
 	if(rightmove)
 		out[0] = opt;
@@ -661,15 +557,7 @@ void cg::Mod_DrawAngleHelper()
 
 	FPS_CalculateSingleBeatDirection(rightmove, cmd);
 
-	if (analyzer.isPreviewing()) {
-		const jump_data* jData = analyzer.FetchFrameData(analyzer.Segmenter_RecordingExists() ? analyzer.segData : analyzer.data, analyzer.preview_frame);
-
-		if (jData) {
-			rightmove = jData->rightmove > 0;
-			yaw = jData->angles[YAW];
-		}
-
-	}
+	
 
 
 	if (!cg_fov || !cg_fovscale)
@@ -708,186 +596,6 @@ void cg::Mod_DrawCurveSpeed()
 	r::R_DrawText(buffer, 700, 200, 2, 2, 0, vec4_t{ 1,1,1,1 }, 0);
 }
 
-void cg::Mod_DrawJumpPath()
-{
-
-	if (!analyzer.RecordingExists() && !analyzer.Segmenter_RecordingExists() || !v::mod_jumpv_path.isEnabled())
-		return;
-
-	//const auto OriginsToScreen = [](std::vector<jump_data> data, std::vector<ImVec2>* color) -> std::vector<ImVec2> {
-	//	std::vector<ImVec2> points;
-	//	color->clear();
-	//	color->resize(1);
-	//	color->erase(color->begin(), color->end());
-
-	//	int validPoints{ 0 };
-	//	vec2_t xy;
-
-	//	for (unsigned i = 0; i < data.size(); i++) {
-	//		if (r::WorldToScreen(data[i].origin, xy)) {
-	//			points.push_back(ImVec2(xy[0], xy[1]));
-
-	//			ImVec2 fcolor;
-
-	//			float col = VALUE2COLOR(glm::length(glm::vec2(data[i].velocity[0], data[i].velocity[1])), analyzer.average_velocity);
-
-	//			fcolor.x = 255.f - col;
-	//			fcolor.y = col;
-	//			if (col > 255) {
-	//				fcolor.x = 0;
-	//				fcolor.y = 255; //green because we got more speed
-	//			}
-	//			color->push_back(fcolor);
-	//			validPoints += 1;
-	//		}
-	//	}
-	//	points.resize(validPoints);
-	//	color->resize(validPoints);
-	//	return points;
-	//};
-
-	std::vector<ImVec2> color;
-	std::vector<ImVec2> points = r::OriginsToScreen(analyzer.Segmenter_RecordingExists() ? analyzer.segData : analyzer.data, &color, true);
-	if (points.size() > 1)
-		for (int i = 0; i < points.size() - 1; i++)
-			ImGui::GetBackgroundDrawList()->AddLine(points[i], points[i + 1], IM_COL32(color[i].x, color[i].y, 0, 255), 3.f);
-
-
-	vec2_t xy;
-	jump_data* jData = analyzer.FetchFrameData(analyzer.isSegmenting() ? analyzer.segData : analyzer.data, analyzer.preview_frame);
-
-	if (jData) {
-		if (r::WorldToScreen(jData->origin, xy)) {
-			ImGui::GetBackgroundDrawList()->AddCircle(ImVec2(xy[0], xy[1]), 10.f, IM_COL32(255, 255, 255, 255), 3);
-		}
-	}
-	
-
-
-}
-void cg::Mod_DrawJumpHitbox()
-{
-	if (!analyzer.RecordingExists() && !analyzer.Segmenter_RecordingExists() || !v::mod_jumpv_hitbox.isEnabled())
-		return;
-
-	if (!analyzer.InFreeMode() && v::mod_jumpv_forcepos.isEnabled())
-		return;
-
-	jump_data* jData = analyzer.FetchFrameData(analyzer.Segmenter_RecordingExists() ? analyzer.segData : analyzer.data, analyzer.preview_frame);
-
-	if (jData) {
-
-		r::box_s box(jData->origin, jData->mins, jData->maxs);
-		box.R_DrawConstructedBoxEdges(vec4_t{ 255,255,0,255 });
-		box.R_DrawConstructedBox(vec4_t{ 255,255,0,50 });
-
-	}
-}
-void cg::Mod_DrawJumpDirection()
-{
-	if (!analyzer.isPreviewing() || !analyzer.RecordingExists() && !analyzer.Segmenter_RecordingExists())
-		return;
-
-	jump_data* jData = analyzer.FetchFrameData(analyzer.Segmenter_RecordingExists() ? analyzer.segData : analyzer.data, analyzer.preview_frame);
-
-	if (!jData)
-		return;
-
-	vec3_t velocity, origin;
-	VectorCopy(jData->velocity, velocity);
-	VectorCopy(jData->origin, origin);
-
-	//VectorNormalize(velocity);
-	//VectorScale(velocity, 180, velocity);
-
-	vectoangles(velocity, velocity);
-
-
-	origin[2] += jData->maxs[2] / 2;
-
-	AnglesToForward(velocity, origin, 50, velocity);
-
-	vec2_t org_xy, end_xy;
-
-	if (r::WorldToScreen(origin, org_xy) && r::WorldToScreen(velocity, end_xy)) {
-		ImGui::GetBackgroundDrawList()->AddLine(ImVec2(org_xy[0], org_xy[1]), ImVec2(end_xy[0], end_xy[1]), IM_COL32(255, 255, 0, 255), 2);
-		
-	}
-
-
-	
-
-}
-void cg::Mod_B_DrawPath()
-{
-	size_t indx(0);
-	for (auto& a : jbuilder.segments) {
-
-		std::vector<ImVec2> points = r::OriginsToScreen(a.jData);
-		if (points.size() > 1) {
-			for (int i = 0; i < points.size() - 1; i++) {
-				glm::vec4 rgb;
-
-				rgb.r = indx == jbuilder.current_segment ? 255 : 0;
-				rgb.g = indx == jbuilder.current_segment ? 0 : 255;
-				rgb.b = 0;
-
-
-				rgb.a = 255;
-
-				ImGui::GetBackgroundDrawList()->AddLine(points[i], points[i + 1], IM_COL32(rgb.r, rgb.g, rgb.b, rgb.a), 3.f);
-			}
-
-		}
 
 
 
-		if (a.jData.size() > 1 && v::mod_jbuild_wasd.isEnabled()) {
-			jump_data jData = a.jData[0];
-
-			vec3_t origin, vel, ang;
-			vec2_t xy, xy_end;
-			VectorCopy(jData.origin, origin);
-			VectorCopy(jData.velocity, vel);
-
-			vectoangles(vel, vel);
-
-
-			if (jData.rightmove > 0) {
-				vel[YAW] -= 90;
-			}
-			else {
-				vel[YAW] += 90;
-
-			}
-			vel[PITCH] = 0;
-			vel[ROLL] = 0;
-
-			AnglesToForward(vel, origin, 50, ang);
-
-			if (r::WorldToScreen(origin, xy) && r::WorldToScreen(ang, xy_end)) {
-				ImGui::GetBackgroundDrawList()->AddLine(ImVec2(xy[0], xy[1]), ImVec2(xy_end[0], xy_end[1]), IM_COL32(255, 255, 0, 255), 3);
-			}
-		}
-
-		//jump_data* jData = jbuilder.FetchFrameData(jbuilder.preview_frame);
-
-		if (jbuilder.preview_frame > a.begin && jbuilder.preview_frame < a.end && v::mod_jbuild_hitbox.isEnabled() && !v::mod_jbuild_forcepos.isEnabled()) {
-
-			if (a.jData.size() > 1) {
-
-
-				jump_data jData = a.jData[jbuilder.preview_frame - a.begin];
-
-
-				r::box_s box(jData.origin, jData.mins, jData.maxs);
-				box.R_DrawConstructedBoxEdges(vec4_t{ 255,102,255,255 });
-				box.R_DrawConstructedBox(vec4_t{ 255,102,255,50 });
-			
-
-			}
-		}
-		indx++;
-	}
-
-}

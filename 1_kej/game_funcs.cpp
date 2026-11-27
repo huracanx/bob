@@ -90,18 +90,13 @@ void OpenMenu_f()
     if (clientUI[0].connectionState != CA_ACTIVE && !clc.demoplaying)
         return; // only toggle the menu in-game or during demo playback
 
-    if (analyzer.isRecording())
-        analyzer.StopRecording();
 
-    if (analyzer.isSegmenting())
-        analyzer.OnEndSegment();
 
     r::should_draw_menu = !r::should_draw_menu;
 
     if (!r::should_draw_menu) {
         std::cout << "calling R_RemoveInput() from R_OpenMenu()\n";
         r::R_RemoveInput(r::should_draw_menu);
-        analyzer.setPreviewState(false);
         // Input capture already preserves raw view angles; do not apply a second rotation.
         return;
     }

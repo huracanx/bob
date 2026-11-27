@@ -233,8 +233,7 @@ float cg::getOptAngle(float& _opt, const bool all_techs, const char forwardmoveI
 
     if (_speed < 1.0f || (_speed < clients->snap.ps.speed && NOT_GROUND) ||
         (!all_techs && !GROUND && forwardmove != 127 && rightmove != 0) ||
-        (GROUND && (forwardmove <= 0 || rightmove == 0)) ||
-        (analyzer.isSegmenting() && !analyzer.segmenterData.isReady))
+        (GROUND && (forwardmove <= 0 || rightmove == 0)))
         return -400.0f;
 
     // Keep the existing all-techs behavior for alternate movement combinations.
@@ -331,47 +330,7 @@ float cg::getOptAngle(float& _opt, const bool all_techs, const char forwardmoveI
 
 	return yaw;
 }
-float cg::getOptForAnalyzer(jump_data* data, bool onGround)
-{
-	const float _speed = glm::length(glm::vec2(data->velocity[0], data->velocity[1]));
 
-	if (_speed < 1)
-		return -400.0;
-
-	float yaw = data->angles[YAW];
-	float g_speed = (float)cgs->snap->ps.speed;
-	const float FPS = (float)data->FPS;
-
-	float accel = FPS / g_speed;
-
-	if (_speed < 190)
-		g_speed = 190.f - (190.f - _speed);
-	else if (onGround && _speed < 370)
-		g_speed = 224.f;
-
-	const float velocitydirection = atan2(data->velocity[1], data->velocity[0]) * 180.f / PI;
-	const float accelerationAng = atan2(-(int)data->rightmove, (int)data->forwardmove) * 180.f / PI;
-	float acosArg = (g_speed - accel) / _speed;
-	acosArg = acosArg < -1.0f ? -1.0f : (acosArg > 1.0f ? 1.0f : acosArg);
-	float diff = (float)(acos(acosArg) * 180.0 / PI);
-	//const float minAngle = acos(g_speed / _speed) * 180.f / PI;
-
-	//if (jumpanalyzer.recommendedFPS == 125)
-	//	diff += accel;
-
-	float delta = yaw;
-
-
-	if ((int)data->rightmove > 0) {
-		delta = (velocitydirection - diff - accelerationAng);
-	}
-	else if ((int)data->rightmove < 0) {
-		delta = (velocitydirection + diff - accelerationAng);
-	}
-	yaw = delta;
-
-	return yaw;
-}
 float cg::DistanceToOpt(float delta, const float& yaw)
 {
 	float opt = fabs(yaw - delta);
