@@ -135,19 +135,9 @@ void cg::CG_InitHooks()
 	a->install(&(PVOID&)PM_UFOMove_f, PM_UFOMove);
 	a->install(&(PVOID&)PM_Weapon_f, PM_Weapon);
 	a->install(&(PVOID&)r::CG_DrawActive_f, r::CG_DrawActive); 
-	a->install(&(PVOID&)Pmove_f, Pmove);
-    // IW3SR uses a distinct FinishMove entry on CoD4X.
-    hook bhopHook;
     bhopCommandCount = 0;
     bhopJumpCount = 0;
-    const auto finishMoveAddress = cod4x_entry
-        ? bhopHook.find_pattern("cod4x_021.dll", "?? ?? ?? ?? ?? 15 ?? ?? ?? ?? 8B 44 24 10 88 50 14 8B 15")
-        : static_cast<std::uintptr_t>(0x463A60);
-    CL_FinishMove_f = reinterpret_cast<decltype(CL_FinishMove_f)>(finishMoveAddress);
-    bhopHookInstalled = CL_FinishMove_f &&
-        bhopHook.install(reinterpret_cast<PVOID*>(&CL_FinishMove_f), CL_FinishMove) == NO_ERROR;
-    if (!bhopHookInstalled)
-        Com_Printf(CON_CHANNEL_CONSOLEONLY, "Bunnyhopping: FinishMove hook unavailable\n");
+    bhopHookInstalled = a->install(&(PVOID&)Pmove_f, Pmove) == NO_ERROR;
 	a->install(&(PVOID&)stub, Script_ScriptMenuResponse);
 	a->install(&(PVOID&)stub2, Script_OpenScriptMenu);
 	a->install(&(PVOID&)CG_CalcCrosshairColor_f, CG_CalcCrosshairColor);
@@ -193,12 +183,8 @@ void cg::CG_RemoveHooks()
 	a->remove(&(PVOID&)PM_UFOMove_f, PM_UFOMove);
 	a->remove(&(PVOID&)PM_Weapon_f, PM_Weapon);
 	a->remove(&(PVOID&)r::CG_DrawActive_f, r::CG_DrawActive);
-    if (bhopHookInstalled) {
-        hook bhopHook;
-        if (bhopHook.remove(reinterpret_cast<PVOID*>(&CL_FinishMove_f), CL_FinishMove) == NO_ERROR)
-            bhopHookInstalled = false;
-    }
-	a->remove(&(PVOID&)Pmove_f, Pmove);
+    if (bhopHookInstalled && a->remove(&(PVOID&)Pmove_f, Pmove) == NO_ERROR)
+        bhopHookInstalled = false;
 	a->remove(&(PVOID&)stub, Script_ScriptMenuResponse);
 	a->remove(&(PVOID&)stub2, Script_OpenScriptMenu);
 	a->remove(&(PVOID&)CG_CalcCrosshairColor_f, CG_CalcCrosshairColor);

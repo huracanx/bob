@@ -527,7 +527,7 @@ void Jump_Features()
 
 
         if (v::mod_bhop.isEnabled()) {
-            ImGui::Text("Bhop hook: %s", cg::bhopHookInstalled ? "installed" : "unavailable");
+            ImGui::Text("Bhop Pmove hook: %s", cg::bhopHookInstalled ? "installed" : "unavailable");
             ImGui::Text("Commands: %lu | Jump requests: %lu", cg::bhopCommandCount, cg::bhopJumpCount);
         }
 
