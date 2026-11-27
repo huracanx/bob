@@ -7,6 +7,9 @@
 namespace r
 {
 	inline bool should_draw_menu;
+	inline bool inputCaptured = false;
+	inline vec3_t capturedInputAngles{};
+	void R_ClearMouseDelta();
 	inline vec3_t angles_before_menu;
 
 	void IN_ActiveMouse(int active);

@@ -70,7 +70,13 @@ bool r::R_ImGui(IDirect3DDevice9* pDevice)
 LRESULT CALLBACK r::WndProc(const HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
 
 
-	if (ImGui_ImplWin32_WndProcHandler(hWnd, uMsg, wParam, lParam)) {
+	const bool handled = ImGui_ImplWin32_WndProcHandler(hWnd, uMsg, wParam, lParam) != 0;
+	if (r::inputCaptured && (uMsg == WM_INPUT || (uMsg >= WM_MOUSEFIRST && uMsg <= WM_MOUSELAST))) {
+		r::R_ClearMouseDelta();
+		if (uMsg == WM_INPUT) return DefWindowProc(hWnd, uMsg, wParam, lParam);
+		return 0;
+	}
+	if (handled && !(uMsg == WM_KEYDOWN && wParam == VK_DELETE)) {
 		return 1l;
 	}
 

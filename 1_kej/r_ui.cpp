@@ -200,6 +200,11 @@ void r::IN_ActiveMouse(int active)
 	s_wmv->mouseActive = on;
 	s_wmv->mouseInitialized = on;
 }
+void r::R_ClearMouseDelta()
+{
+    clients->mouseDx[0] = clients->mouseDx[1] = 0;
+    clients->mouseDy[0] = clients->mouseDy[1] = 0;
+}
 void r::R_RemoveInput(bool _true, bool save_file)
 {
 
@@ -220,6 +225,9 @@ void r::R_RemoveInput(bool _true, bool save_file)
 
 
 	if (_true) {
+        if (!inputCaptured) VectorCopy(clients->viewangles, capturedInputAngles);
+        inputCaptured = true;
+        R_ClearMouseDelta();
 
 		// Cursor: stop the game from re-centering the OS cursor / clipping it
 		// to the tiny centre rect while the menu is open. Without this the
@@ -239,7 +247,9 @@ void r::R_RemoveInput(bool _true, bool save_file)
 		return;
 	}
 
-	g_suppressCursorRecenters = false;
+	R_ClearMouseDelta();
+    inputCaptured = false;
+    g_suppressCursorRecenters = false;
 
 	io.MouseDrawCursor = false;
 	io.WantCaptureMouse = false; 

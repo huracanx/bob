@@ -49,6 +49,11 @@ HRESULT __stdcall r::draw_func(IDirect3DDevice9* pDevice)
 
 void __cdecl r::CG_DrawActive()
 {
+    if (r::inputCaptured) {
+        r::R_ClearMouseDelta();
+        if (!analyzer.isPreviewing() && !jbuilder.isEditing())
+            VectorCopy(r::capturedInputAngles, clients->viewangles);
+    }
 	if (mglobs.isUsing) {
 		Mod_DrawVelocity();
 		Mod_DrawCoordinates();
