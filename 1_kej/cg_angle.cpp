@@ -277,32 +277,15 @@ float cg::getOptAngle(float& _opt, const bool all_techs, const char forwardmoveI
         return yaw + _opt;
     }
 
-	// These dvars may not be registered in the client on modded public servers.
-	// Fall back to the player's movement speed and a conventional FPS value.
-	dvar_s* speedDvar = Dvar_FindMalleableVar("g_speed");
-	dvar_s* fpsDvar = Dvar_FindMalleableVar("com_maxfps");
-
-	float g_speed = speedDvar
-		? (float)speedDvar->current.integer
-		: (float)clients->snap.ps.speed;
-	const float FPS = fpsDvar
-		? (float)fpsDvar->current.integer
-		: (GROUND ? 333.0f : 125.0f);
-
-	if (g_speed <= 0.0f || FPS <= 0.0f || _speed <= 0.0f)
-		return -400.0f;
-
-	float accel = FPS / g_speed;
-
-	//float accel = g_speed * jumpanalyzer.frametime;
-
-	if (jumpanalyzer.recommendedFPS == 125 && NOT_GROUND)
-		accel = g_speed / FPS;
-
-	//float r = sqrtf();
-
-	if (_speed < 190)
-		g_speed = 190.f - (190.f - _speed);
+    // Air acceleration projection uses one physics step and player wish speed.
+    // Do not mix the displayed FPS zone with the actual frame duration.
+    const float g_speed = static_cast<float>(clients->snap.ps.speed);
+    dvar_s* fpsDvar = Dvar_FindMalleableVar("com_maxfps");
+    const float FPS = fpsDvar && fpsDvar->current.integer > 0
+        ? static_cast<float>(fpsDvar->current.integer) : 125.0f;
+    if (g_speed <= 0.0f || !std::isfinite(_speed)) return -400.0f;
+    const float dt = glm::clamp(1.0f / FPS, 0.001f, 0.05f);
+    const float accel = g_speed * dt;
 
 	const double velocitydirection = atan2(clients->cgameVelocity[1], clients->cgameVelocity[0]) * 180.f / PI;
 	const double accelerationAng = atan2(-rightmove, forwardmove) * 180.f / PI;
@@ -317,11 +300,11 @@ float cg::getOptAngle(float& _opt, const bool all_techs, const char forwardmoveI
 	float delta = yaw;
 
 
-	if (rightmove > 0 || WE && all_techs || SE && all_techs) {
+	if (rightmove > 0 || (rightmove == 0 && all_techs && (WE || SE))) {
 		delta = (velocitydirection - diff - accelerationAng);
 		_opt = delta - yaw;
 	}
-	else if (rightmove < 0 || WQ && all_techs || SQ && all_techs) {
+	else if (rightmove < 0 || (rightmove == 0 && all_techs && (WQ || SQ))) {
 		delta = (velocitydirection + diff - accelerationAng);
 		_opt = delta - yaw;
 	}

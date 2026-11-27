@@ -17,10 +17,14 @@ void cg::Mod_A_Strafebot()
 	{ resetGround(); lastAirSide = 0; lastAirUpdate = 0; airSwitchTime = 0; return; }
 
 	const usercmd_s* cmd = cinput->GetUserCmd(cinput->currentCmdNum - 1);
+    if (!cmd) return;
+    // Live movement input is used for air WA/WD; ground keeps its existing path.
+    const char forward = GROUND ? cmd->forwardmove : input->move;
+    const char sideMove = GROUND ? cmd->rightmove : input->strafe;
 
     // WA/WD is the basic ground mode. It must not depend on the separate
     // "All Techniques" option; that option remains relevant to other patterns.
-    if (cmd->rightmove == 0 || (GROUND && cmd->forwardmove <= 0)) {
+    if (sideMove == 0 || (GROUND && forward <= 0)) {
         resetGround();
         if (GROUND) { lastAirSide = 0; lastAirUpdate = 0; airSwitchTime = 0; }
         return;
@@ -35,7 +39,7 @@ void cg::Mod_A_Strafebot()
 	else if (clients->viewangles[YAW] > 3000 || clients->viewangles[YAW] < -3000)
 		clients->viewangles[YAW] = fmodf(clients->viewangles[YAW], 360);
 
-	optYaw = getOptAngle(test, v::mod_strafebot_all.isEnabled(), cmd->forwardmove, cmd->rightmove);
+	optYaw = getOptAngle(test, v::mod_strafebot_all.isEnabled(), forward, sideMove);
 	if (optYaw == -400.f || !std::isfinite(optYaw)) {
         resetGround();
         return;
@@ -44,7 +48,7 @@ void cg::Mod_A_Strafebot()
     if (GROUND) {
         lastAirSide = 0; lastAirUpdate = 0; airSwitchTime = 0;
         const DWORD now = Sys_MilliSeconds();
-        const int side = cmd->rightmove > 0 ? 1 : -1;
+        const int side = sideMove > 0 ? 1 : -1;
         if (!lastGroundUpdate || now - lastGroundUpdate > 100) {
             lastGroundUpdate = now;
             lastGroundSide = side;
@@ -67,7 +71,7 @@ void cg::Mod_A_Strafebot()
     }
 
     const DWORD now = Sys_MilliSeconds();
-    const int side = cmd->rightmove > 0 ? 1 : -1;
+    const int side = sideMove > 0 ? 1 : -1;
     const bool continuous = lastAirUpdate && now - lastAirUpdate <= 100;
     if (continuous && lastAirSide && side != lastAirSide)
         airSwitchTime = now;
@@ -77,13 +81,18 @@ void cg::Mod_A_Strafebot()
     lastAirSide = side;
     const float error = AngleNormalize180(optYaw - clients->cgameViewangles[YAW]);
     const bool switching = airSwitchTime && now - airSwitchTime < 65;
+    const bool diagonal = forward > 0 && sideMove != 0;
     const int sinceJump = jumpanalyzer.serverTime - jumpanalyzer.airTime;
     const int sinceGround = jumpanalyzer.serverTime - jumpanalyzer.groundTime;
     const float smoothing = glm::max(1.0f, (sinceJump >= 0 && sinceJump < 300 || sinceGround < 200)
         ? v::mod_strafebot_bhop_s.GetFloat() : v::mod_strafebot_smooth.GetFloat());
     // Fast shortest-arc correction during WA/WD reversal; normal smoothing otherwise.
     const float alpha = switching ? 1.0f : (smoothing <= 1.0f ? 1.0f : 1.0f - powf(1.0f - 1.0f / smoothing, dt * 125.0f));
-    const float correction = switching ? glm::clamp(error, -1800.0f * dt, 1800.0f * dt) : error * alpha;
+    // A reversal must reach the new acceleration direction immediately.
+    // For ordinary diagonal tracking, keep the error within a small tolerance.
+    const float smoothed = error * alpha;
+    const float correction = diagonal && switching ? error : diagonal
+        ? error - glm::clamp(error - smoothed, -0.10f, 0.10f) : smoothed;
     clients->viewangles[YAW] += correction;
 
 }
