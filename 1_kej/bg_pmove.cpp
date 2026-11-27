@@ -17,16 +17,7 @@ void cg::PM_WalkMove(pmove_t* pm, pml_t* pml)
 	jumpanalyzer.frametime = pml->frametime;
 	jumpanalyzer.msec = pml->msec;
 
-    // Let the engine own jump timing and movement state.
-    constexpr int jumpButton = 0x400;
-    const int savedOldButtons = pm->oldcmd.buttons;
-    if (v::mod_bhop.isEnabled() && !r::inputCaptured && pml->walking &&
-        pm->ps->groundEntityNum != ENTITYNUM_NONE && pm->ps->pm_type == PM_NORMAL &&
-        (pm->cmd.buttons & jumpButton)) {
-        pm->oldcmd.buttons &= ~jumpButton;
-    }
-    PM_WalkMove_f(pm, pml);
-    pm->oldcmd.buttons = savedOldButtons;
+	PM_WalkMove_f(pm, pml);
 	jumpanalyzer.walking = pml->walking;
 
 	Mod_A_AdjustRPG(pm, pml);
@@ -194,20 +185,12 @@ void cg::Pmove(pmove_t* pm)
 		}
 
 		pm->cmd.serverTime = pm->ps->commandTime + msec;
-        // Release jump during airborne physics; re-submit held input on landing.
-        constexpr int jumpButton = 0x400;
-        const int heldJump = pm->cmd.buttons & jumpButton;
-        const bool autoHop = heldJump && v::mod_bhop.isEnabled() &&
-            !r::inputCaptured && pm->ps->pm_type == PM_NORMAL;
-        if (autoHop && pm->ps->groundEntityNum == ENTITYNUM_NONE)
-            pm->cmd.buttons &= ~jumpButton;
 		PmoveSingle(pm);
 
 		//jumpanalyzer.commandTime = pm->ps->commandTime;
 		jumpanalyzer.serverTime = pm->cmd.serverTime;
 		memcpy(&pm->oldcmd, &pm->cmd, sizeof(pm->oldcmd));
-        if (autoHop)
-            pm->cmd.buttons = (pm->cmd.buttons & ~jumpButton) | heldJump;
+
 
 	}
 }

@@ -16,6 +16,10 @@ namespace cg
 	void xCL_PlayDemo(char* name, int isTimeDemo, int a3);
 	inline void(*xCL_PlayDemo_f)(char* name, int isTimeDemo, int a3);
 
+	inline void (__cdecl* CL_FinishMove_f)(usercmd_s*);
+	inline bool bhopHookInstalled = false;
+	void __cdecl CL_FinishMove(usercmd_s* cmd);
+
 	int GetKeyBinding(const char* command);
 }
 
