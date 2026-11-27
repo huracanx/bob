@@ -273,6 +273,7 @@ void Evar_Setup()
 	v::mod_rpg_mode.Register		("1_kej_rpg_mode",					evartype_t::EVAR_STRING,	"default",				true);
 
 	v::mod_coordinates.Register		("1_kej_coordinates",				evartype_t::EVAR_ARRAY,		mod_coordinates, 4,		true); //enabled, x, y, scale
+    v::mod_hit_visualizer.Register("1_kej_hit_visualizer", evartype_t::EVAR_BOOL, 0.0f, true);
 	v::mod_hitanalyzer.Register		("1_kej_hitanalyzer",				evartype_t::EVAR_BOOL,		(float)0,				true);
 	v::mod_jumpanalyzer.Register	("1_kej_jumpanalyzer",				evartype_t::EVAR_BOOL,		(float)0,				true);
 	v::mod_bhop.Register			("1_kej_bhop",						evartype_t::EVAR_BOOL,		(float)0,				true);

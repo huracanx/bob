@@ -18,6 +18,7 @@ namespace v
 		mod_rpg_mode,
 		mod_coordinates,
 		mod_hitanalyzer,
+        mod_hit_visualizer,
 		mod_jumpanalyzer,
 		mod_bhop,
 		mod_bounceable_surf,

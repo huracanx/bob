@@ -4,7 +4,26 @@ bool anim_can_use; // true after touching ground to avoid spam mid-air
 
 BOOL cg::PM_SlideMove(pmove_t* pm, pml_t* pml, int gravity)
 {
+    trace_t visualTrace{};
+    vec3_t start{}, end{};
+    const bool inspect = v::mod_hit_visualizer.evar && v::mod_hit_visualizer.isEnabled() &&
+        pm && pm->ps && pml && pm->ps == &cgs->predictedPlayerState && pm->ps->pm_type == PM_NORMAL &&
+        pm->ps->groundEntityNum == ENTITYNUM_NONE && pm->ps->velocity[2] < 0.0f;
+    if (inspect) {
+        VectorCopy(pm->ps->origin, start);
+        VectorMA(start, pml->frametime, pm->ps->velocity, end);
+        if (gravity) end[2] -= 0.5f * pm->ps->gravity * pml->frametime * pml->frametime;
+        // Read-only sweep. PM_playerTrace can alter pm->tracemask, so don't use it here.
+        CG_Trace(&visualTrace, start, pm->mins, pm->maxs, end, pm->ps->clientNum, pm->tracemask);
+    }
 	BOOL clipped = PM_SlideMove_f(pm, pml, gravity);
+    if (inspect && clipped && visualTrace.fraction >= 0.0f && visualTrace.fraction < 1.0f &&
+        !visualTrace.startsolid && !visualTrace.allsolid && visualTrace.normal[2] > 0.3f &&
+        visualTrace.normal[2] < 0.7f && pm->ps->velocity[2] > 0.0f) {
+        vec3_t contact{};
+        for (int i = 0; i < 3; ++i) contact[i] = start[i] + (end[i] - start[i]) * visualTrace.fraction;
+        Mod_RecordBounceContact(pm, pm->cmd.serverTime, contact);
+    }
 
 	jumpanalyzer.velocity_clipped = clipped > 0;
 
@@ -185,7 +204,11 @@ void cg::Pmove(pmove_t* pm)
 		}
 
 		pm->cmd.serverTime = pm->ps->commandTime + msec;
+        const int previousGround = pm->ps->groundEntityNum;
+        vec3_t previousOrigin{};
+        VectorCopy(pm->ps->origin, previousOrigin);
 		PmoveSingle(pm);
+        Mod_RecordJumpStep(pm, previousGround, previousOrigin);
 
 		//jumpanalyzer.commandTime = pm->ps->commandTime;
 		jumpanalyzer.serverTime = pm->cmd.serverTime;

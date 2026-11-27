@@ -231,7 +231,7 @@ float cg::getOptAngle(float& _opt, const bool all_techs, const char forwardmoveI
 
     const float _speed = glm::length(glm::vec2(clients->cgameVelocity[1], clients->cgameVelocity[0]));
 
-    if (_speed < 1.0f || (_speed < clients->snap.ps.speed && NOT_GROUND) ||
+    if (_speed < 1.0f || (_speed < clients->snap.ps.speed && NOT_GROUND && !automation.paraActive) ||
         (!all_techs && !GROUND && forwardmove != 127 && rightmove != 0) ||
         (GROUND && (forwardmove <= 0 || rightmove == 0)))
         return -400.0f;

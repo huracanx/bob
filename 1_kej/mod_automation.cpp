@@ -30,8 +30,12 @@ namespace {
         double origin = base, best = 1e30;
         for (int i = -1; i <= 1; ++i) {
             const double candidate = base + i * 90.0;
+            if (MakeBands(speed, side, candidate).fps333.Contains(yaw)) return candidate;
+        }
+        for (int i = -1; i <= 1; ++i) {
+            const double candidate = base + i * 90.0;
             const auto b = MakeBands(speed, side, candidate);
-            if (b.At(yaw)) return candidate;
+            if (b.fps250.Contains(yaw)) return candidate;
             for (const AirBand band : {b.fps333, b.fps250}) {
                 if (band.hi <= band.lo) continue;
                 const double d = yaw < band.lo ? band.lo - yaw : yaw > band.hi ? yaw - band.hi : 0.0;
@@ -59,8 +63,13 @@ namespace {
         }
         return in250 ? 250 : 0;
     }
+    bool AirborneForStrafe() {
+        const auto& ps = cgs->predictedPlayerState;
+        return ps.pm_type == PM_NORMAL && ps.groundEntityNum == ENTITYNUM_NONE &&
+            !(ps.pm_flags & (PMF_MANTLE | PMF_LADDER | PMF_DUCKED | PMF_PRONE));
+    }
     bool RestrictedAirMode() {
-        return v::mod_strafebot.isEnabled() && NOT_GROUND && !jumpanalyzer.walking &&
+        return v::mod_strafebot.isEnabled() && AirborneForStrafe() &&
             (v::mod_auto_para.isEnabled() || v::mod_auto_250.isEnabled());
     }
     struct AutoSector {
@@ -75,41 +84,69 @@ namespace {
             active = true; side = direction; lastYaw = yaw;
             origin = FindBandOrigin(yaw, direction, speed);
             fps = MakeBands(speed, direction, origin).At(yaw);
-            if (!fps) fps = fallbackFPS == 250 ? 250 : 333;
+            if (!fps) {
+                const auto bands = MakeBands(speed, direction, origin);
+                const auto distance = [yaw](AirBand band) {
+                    if (band.hi <= band.lo) return 1e30;
+                    return yaw < band.lo ? band.lo - yaw : yaw > band.hi ? yaw - band.hi : 0.0;
+                };
+                const double d333 = distance(bands.fps333), d250 = distance(bands.fps250);
+                fps = d250 < d333 ? 250 : d333 < d250 ? 333 : (fallbackFPS == 250 ? 250 : 333);
+            }
         }
     } autoSector;
-    // Walk only the original copy of the bands, in the saved direction.
-    // Stop before any gap, or at the first boundary if Auto Para is alone.
-    float LimitAutoTurn(double yaw, float correction, int side, const AirBands& bands,
+    // The target and the actual outgoing command both describe the same diagonal.
+    // A correction back toward the original band is allowed, but the band is never
+    // reselected from another 90-degree copy during this W-only run.
+    float LimitAutoTurn(double yaw, float correction, const AirBands& bands,
                         int heldFPS, bool allowSwitch) {
-        if (!std::isfinite(correction) || side * correction >= 0.0f) return 0.0f;
-        const int initial = bands.At(yaw);
-        if (!initial || (!allowSwitch && initial != heldFPS)) return 0.0f;
-        const double distance = std::fabs(correction);
-        // Sample sub-degree steps, then bisect the first blocked interval.
-        // The original sector never wraps, even when crossing world yaw +/-180.
-        const int steps = static_cast<int>(std::ceil(distance / 0.025));
-        double accepted = 0.0;
-        const auto allowed = [&](double d) {
-            const int fps = bands.At(yaw - side * d);
-            return fps && (allowSwitch || fps == heldFPS);
-        };
-        for (int i = 1; i <= steps; ++i) {
-            const double next = glm::min(distance, i * 0.025);
-            if (!allowed(next)) {
-                double lo = accepted, hi = next;
-                for (int j = 0; j < 12; ++j) {
-                    const double mid = (lo + hi) * 0.5;
-                    if (allowed(mid)) lo = mid; else hi = mid;
-                }
-                // Leave a margin larger than the engine's short-angle quantization.
-                accepted = glm::max(0.0, lo - 0.012);
-                break;
-            }
-            accepted = next;
+        if (!std::isfinite(correction)) return 0.0f;
+        AirBand allowed = heldFPS == 250 ? bands.fps250 : bands.fps333;
+        const AirBand other = heldFPS == 250 ? bands.fps333 : bands.fps250;
+        if (allowed.hi <= allowed.lo) return 0.0f;
+        // Auto 250 can traverse touching/overlapping bands, never jump a gap.
+        if (allowSwitch && other.hi > other.lo && other.lo <= allowed.hi + 0.001 && other.hi >= allowed.lo - 0.001) {
+            allowed.lo = glm::min(allowed.lo, other.lo);
+            allowed.hi = glm::max(allowed.hi, other.hi);
         }
-        return static_cast<float>(-side * accepted);
+        const double margin = 0.015;
+        if (allowed.hi - allowed.lo <= 2 * margin) return 0.0f;
+        const double target = glm::clamp(yaw + correction, allowed.lo + margin, allowed.hi - margin);
+        // Recover small discrepancies at release without jumping to another sector.
+        if (yaw < allowed.lo - 12.0 || yaw > allowed.hi + 12.0) return 0.0f;
+        return static_cast<float>(target - yaw);
     }
+
+}
+
+void cg::Mod_A_ResetStrafeDirection()
+{
+    automation.paraSide = 0;
+    automation.paraFPS = 0;
+    automation.paraActive = false;
+    autoSector.Reset();
+}
+
+int cg::Mod_A_AutoStrafeSide(bool airborne)
+{
+    if (r::inputCaptured || clc.demoplaying || !v::mod_strafebot.isEnabled() ||
+        (GetAsyncKeyState(v::mod_strafebot_ow.GetInt()) < 0)) {
+        Mod_A_ResetStrafeDirection();
+        return 0;
+    }
+    const bool w = GetAsyncKeyState('W') < 0;
+    const bool a = GetAsyncKeyState('A') < 0;
+    const bool d = GetAsyncKeyState('D') < 0;
+    const bool back = GetAsyncKeyState('S') < 0;
+    if (a != d && !back && (w || (airborne && v::mod_halfbeat.isEnabled())))
+        automation.paraSide = d ? 1 : -1;
+    if (!w || back) {
+        if (!(airborne && v::mod_halfbeat.isEnabled() && a != d && !back)) automation.paraSide = 0;
+        return 0;
+    }
+    if (!airborne || a || d || !bhopHookInstalled ||
+        !(v::mod_auto_para.isEnabled() || v::mod_auto_250.isEnabled())) return 0;
+    return automation.paraSide;
 }
 
 void cg::Mod_A_Strafebot()
@@ -131,7 +168,7 @@ void cg::Mod_A_Strafebot()
     // Use live keys for the mode gate; the old command may be one frame behind.
     const bool leftHeld = GetAsyncKeyState('A') < 0;
     const bool rightHeld = GetAsyncKeyState('D') < 0;
-    const bool airborne = NOT_GROUND && !jumpanalyzer.walking;
+    const bool airborne = AirborneForStrafe() && NOT_GROUND;
     const bool wHeld = GetAsyncKeyState('W') < 0;
     const bool sHeld = GetAsyncKeyState('S') < 0;
     // Read the actual keys, not the previous movement byte, when deciding
@@ -140,14 +177,12 @@ void cg::Mod_A_Strafebot()
     const char sideMove = leftHeld != rightHeld ? (rightHeld ? 127 : -127) : 0;
     const bool diagonalInput = forward == 127 && sideMove != 0;
     const bool halfbeat = airborne && v::mod_halfbeat.isEnabled() && !wHeld && !sHeld && sideMove != 0;
-    if (diagonalInput || halfbeat) automation.paraSide = sideMove > 0 ? 1 : -1;
-    if (!airborne && !diagonalInput) automation.paraSide = 0;
-    if (!wHeld && !halfbeat) automation.paraSide = 0;
-    const bool wOnly = airborne && forward == 127 && !leftHeld && !rightHeld;
-    const bool para = wOnly && automation.paraSide != 0 && RestrictedAirMode();
+    const int autoSide = Mod_A_AutoStrafeSide(airborne);
+    const bool para = autoSide != 0 && airborne && forward == 127 && !leftHeld && !rightHeld;
+    const char effectiveSide = para ? static_cast<char>(autoSide * 127) : sideMove;
     automation.paraActive = para;
     if (!para) { autoSector.Reset(); automation.paraFPS = 0; }
-    if (!diagonalInput && !halfbeat && !para) {
+    if ((!airborne && !GROUND) || (!diagonalInput && !halfbeat && !para)) {
         resetGround();
         lastAirUpdate = 0;
         return;
@@ -158,7 +193,7 @@ void cg::Mod_A_Strafebot()
         const float yaw = clients->cgameViewangles[YAW];
         auto* limit = Dvar_FindMalleableVar("com_maxfps");
         const int fallbackFPS = limit && limit->current.integer == 250 ? 250 : 333;
-        int fps = RestrictedZoneFPS(yaw, forward, sideMove, automation.paraSide, clients->snap.ps.speed);
+        int fps = RestrictedZoneFPS(yaw, forward, effectiveSide, automation.paraSide, clients->snap.ps.speed);
         if (para && std::isfinite(yaw) && clients->snap.ps.speed > 0) {
             if (!autoSector.active || autoSector.side != automation.paraSide)
                 autoSector.Begin(yaw, automation.paraSide, clients->snap.ps.speed, fallbackFPS);
@@ -179,7 +214,7 @@ void cg::Mod_A_Strafebot()
 	else if (clients->viewangles[YAW] > 3000 || clients->viewangles[YAW] < -3000)
 		clients->viewangles[YAW] = fmodf(clients->viewangles[YAW], 360);
 
-	optYaw = getOptAngle(test, halfbeat, forward, sideMove);
+	optYaw = getOptAngle(test, halfbeat, forward, effectiveSide);
 	if (optYaw == -400.f || !std::isfinite(optYaw)) {
         resetGround();
         return;
@@ -197,17 +232,17 @@ void cg::Mod_A_Strafebot()
         }
         const bool switched = side != lastGroundSide;
         lastGroundSide = side;
-        if (switched) groundBlend = glm::max(groundBlend, 0.75f);
+        const bool settled = groundBlend >= 1.0f;
         const float dt = glm::min(0.025f, (now - lastGroundUpdate) * 0.001f);
         lastGroundUpdate = now;
-        groundBlend = glm::min(1.0f, groundBlend + dt / 0.15f);
+        groundBlend = glm::min(1.0f, groundBlend + dt / 0.35f);
         const float yaw = clients->cgameViewangles[YAW];
         const float error = AngleNormalize180(optYaw - yaw);
-        // Keep only the original first-engagement ramp. Direction changes
-        // are immediate once the ground strafe is already active.
-        const float maxStep = (60.0f + 180.0f * groundBlend) * dt;
-        const float correction = switched || groundBlend >= 1.0f ? error :
-            glm::clamp(error * glm::min(1.0f, dt * 18.0f) * groundBlend, -maxStep, maxStep);
+        // No jump to the full angle when the start ramp expires. Only an
+        // intentional side change after engagement gets immediate correction.
+        const float maxStep = (30.0f + 210.0f * groundBlend) * dt;
+        const float correction = switched && settled ? error :
+            glm::clamp(error, -maxStep, maxStep);
         clients->viewangles[YAW] += correction;
         return;
     }
@@ -230,8 +265,11 @@ void cg::Mod_A_Strafebot()
         const auto bands = MakeBands(clients->snap.ps.speed, side, autoSector.origin);
         // If the player or the server has moved outside the original sector,
         // stop instead of acquiring a neighbouring sector or reversing.
-        const float step = glm::clamp(error, -360.0f * dt, 360.0f * dt);
-        const float bounded = LimitAutoTurn(unwrapped, step, side, bands, autoSector.fps, allowSwitch);
+        float targetDelta = LimitAutoTurn(unwrapped, error, bands, autoSector.fps, allowSwitch);
+        // Only small reverse corrections to restore the target angle; never
+        // rotate toward the opposite strafe or chase a distant sector.
+        if (targetDelta * side > 0.0f && std::fabs(targetDelta) > 3.0f) targetDelta = 0.0f;
+        const float bounded = glm::clamp(targetDelta, -360.0f * dt, 360.0f * dt);
         clients->viewangles[YAW] += bounded;
         autoSector.lastYaw = unwrapped + bounded;
         const int next = bands.At(autoSector.lastYaw);
@@ -302,7 +340,8 @@ void cg::Mod_A_AutoFPS()
     if (v::mod_autoFPS.isEnabled() && RestrictedAirMode() && !r::inputCaptured) {
         const bool left = GetAsyncKeyState('A') < 0;
         const bool right = GetAsyncKeyState('D') < 0;
-        const int strafe = left != right ? (right ? 127 : -127) : 0;
+        const int strafe = left != right ? (right ? 127 : -127) :
+            (automation.paraActive ? automation.paraSide * 127 : 0);
         const int forward = GetAsyncKeyState('W') < 0 ? 127 : 0;
         const int side = strafe ? (strafe > 0 ? 1 : -1) : automation.paraSide;
         const int zone = RestrictedZoneFPS(clients->cgameViewangles[YAW], forward, strafe, side, clients->snap.ps.speed);

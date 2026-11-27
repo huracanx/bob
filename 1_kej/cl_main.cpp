@@ -95,6 +95,14 @@ void __cdecl cg::CL_FinishMove(usercmd_s* cmd)
 {
     CL_FinishMove_f(cmd);
     ++bhopCommandCount;
+    if (cmd && !r::inputCaptured && !clc.demoplaying && v::mod_strafebot.evar) {
+        const auto& state = cgs->predictedPlayerState;
+        const bool airborne = state.pm_type == PM_NORMAL && state.groundEntityNum == ENTITYNUM_NONE &&
+            !(state.pm_flags & (PMF_MANTLE | PMF_LADDER | PMF_DUCKED | PMF_PRONE));
+        const int side = Mod_A_AutoStrafeSide(airborne);
+        if (side && cmd->forwardmove > 0 && cmd->rightmove == 0)
+            cmd->rightmove = static_cast<char>(side * 127);
+    }
     if (!cmd || !v::mod_bhop.evar || !v::mod_bhop.isEnabled() ||
         r::inputCaptured || clc.demoplaying || !(GetAsyncKeyState(VK_SPACE) & 0x8000))
         return;

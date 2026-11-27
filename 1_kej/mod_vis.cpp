@@ -617,3 +617,112 @@ void cg::Mod_DrawCurveSpeed()
 
 
 
+
+// Hit Visualizer: local prediction only, with a bounded command-time history.
+// Never write to playerState, usercmd, trace mask or collision state here.
+namespace {
+    using HitPoint = std::array<float, 3>;
+    struct HitBoxSample {
+        bool valid = false;
+        HitPoint origin{}, mins{}, maxs{};
+    };
+    struct JumpSample {
+        std::vector<HitPoint> points;
+        HitBoxSample hit;
+    };
+    JumpSample currentJump, lastJump;
+    HitBoxSample pendingHit;
+    int pendingHitTime = -1, lastSampleTime = -1;
+    bool recordingJump = false;
+    HitPoint MakeHitPoint(const float* v) { return {v[0], v[1], v[2]}; }
+    bool ValidHitPoint(const HitPoint& v) {
+        return std::isfinite(v[0]) && std::isfinite(v[1]) && std::isfinite(v[2]);
+    }
+    bool LocalHitState(const cg::pmove_t* pm) {
+        return pm && pm->ps && pm->ps == &cg::cgs->predictedPlayerState &&
+            pm->ps->pm_type == cg::PM_NORMAL && !cg::clc.demoplaying;
+    }
+    void AppendHitPoint(JumpSample& jump, const HitPoint& point) {
+        if (!ValidHitPoint(point)) return;
+        if (!jump.points.empty() && jump.points.back() == point) return;
+        // Preserve the beginning of the jump. Downsample older history if needed.
+        if (jump.points.size() >= 4096) {
+            size_t write = 1;
+            for (size_t read = 2; read < jump.points.size(); read += 2)
+                jump.points[write++] = jump.points[read];
+            jump.points.resize(write);
+        }
+        jump.points.push_back(point);
+    }
+    void DrawHitLine(const HitPoint& a, const HitPoint& b, ImU32 col, float width) {
+        vec3_t va{a[0], a[1], a[2]}, vb{b[0], b[1], b[2]};
+        vec2_t sa{}, sb{};
+        if (r::WorldToScreen(va, sa) && r::WorldToScreen(vb, sb))
+            ImGui::GetBackgroundDrawList()->AddLine(ImVec2(sa[0], sa[1]), ImVec2(sb[0], sb[1]), col, width);
+    }
+}
+
+void cg::Mod_ResetHitVisualizer()
+{
+    currentJump = {};
+    lastJump = {};
+    pendingHit = {};
+    pendingHitTime = lastSampleTime = -1;
+    recordingJump = false;
+}
+
+void cg::Mod_RecordBounceContact(pmove_t* pm, int commandTime, const float* origin)
+{
+    if (!v::mod_hit_visualizer.evar || !v::mod_hit_visualizer.isEnabled() || !LocalHitState(pm) || commandTime <= lastSampleTime) return;
+    if (pendingHit.valid && pendingHitTime == commandTime) return; // first contact in the step
+    pendingHit.origin = MakeHitPoint(origin);
+    pendingHit.mins = MakeHitPoint(pm->mins);
+    pendingHit.maxs = MakeHitPoint(pm->maxs);
+    pendingHit.valid = ValidHitPoint(pendingHit.origin) && ValidHitPoint(pendingHit.mins) && ValidHitPoint(pendingHit.maxs);
+    pendingHitTime = commandTime;
+}
+
+void cg::Mod_RecordJumpStep(pmove_t* pm, int previousGround, const float* previousOrigin)
+{
+    if (!v::mod_hit_visualizer.evar || !v::mod_hit_visualizer.isEnabled() || !LocalHitState(pm)) return;
+    const int time = pm->ps->commandTime;
+    if (time <= lastSampleTime) return; // discard prediction replays of old commands
+    lastSampleTime = time;
+    const bool air = pm->ps->groundEntityNum == ENTITYNUM_NONE;
+    if (!recordingJump && previousGround != ENTITYNUM_NONE && air) {
+        currentJump = {};
+        recordingJump = true;
+        AppendHitPoint(currentJump, MakeHitPoint(previousOrigin));
+    }
+    if (recordingJump) {
+        if (pendingHit.valid && pendingHitTime == time && !currentJump.hit.valid) {
+            currentJump.hit = pendingHit;
+            AppendHitPoint(currentJump, pendingHit.origin);
+        }
+        AppendHitPoint(currentJump, MakeHitPoint(pm->ps->origin));
+        if (!air) {
+            lastJump = std::move(currentJump);
+            currentJump = {};
+            recordingJump = false;
+        }
+    }
+    if (pendingHitTime <= time) { pendingHit = {}; pendingHitTime = -1; }
+}
+
+void cg::Mod_DrawHitVisualizer()
+{
+    if (!v::mod_hit_visualizer.evar || !v::mod_hit_visualizer.isEnabled() || NOT_SERVER || clc.demoplaying || !ImGui::GetCurrentContext()) return;
+    // Show a completed jump until the next is finished; show the live trail
+    // only when there is no completed jump yet.
+    const auto& jump = lastJump.points.empty() ? currentJump : lastJump;
+    for (size_t i = 1; i < jump.points.size(); ++i)
+        DrawHitLine(jump.points[i - 1], jump.points[i], IM_COL32(135, 221, 240, 225), 2.0f);
+    if (!jump.hit.valid) return;
+    HitPoint corners[8]{};
+    for (int i = 0; i < 8; ++i)
+        for (int axis = 0; axis < 3; ++axis)
+            corners[i][axis] = jump.hit.origin[axis] + ((i & (1 << axis)) ? jump.hit.maxs[axis] : jump.hit.mins[axis]);
+    for (int i = 0; i < 8; ++i)
+        for (int axis = 0; axis < 3; ++axis)
+            if (!(i & (1 << axis))) DrawHitLine(corners[i], corners[i | (1 << axis)], IM_COL32(245, 151, 183, 255), 2.0f);
+}

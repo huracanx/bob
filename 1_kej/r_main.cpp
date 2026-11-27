@@ -18,6 +18,7 @@ HRESULT __stdcall r::draw_func(IDirect3DDevice9* pDevice)
 		if (R_OpenMenu(pDevice)) {
 
 			Mod_DrawVelocityDirection();
+            Mod_DrawHitVisualizer();
 			if (!clc.demoplaying) {
 
 				Mod_DrawWorldAxes();

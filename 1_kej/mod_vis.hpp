@@ -13,6 +13,10 @@ namespace cg
 	};
 
 	void Mod_DrawEvents();
+    void Mod_ResetHitVisualizer();
+    void Mod_RecordJumpStep(pmove_t* pm, int previousGround, const float* previousOrigin);
+    void Mod_RecordBounceContact(pmove_t* pm, int commandTime, const float* origin);
+    void Mod_DrawHitVisualizer();
 
 	void Mod_DrawVelocity();
 	void Mod_DrawFPSLimit();

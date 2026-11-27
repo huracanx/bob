@@ -105,6 +105,11 @@ void Visual_Features()
 		
 
 
+        if (ImGui::Checkbox("Hit Visualizer", &v::mod_hit_visualizer.evar->enabled)) {
+            v::mod_hit_visualizer.SetValue(v::mod_hit_visualizer.isEnabled());
+            cg::Mod_ResetHitVisualizer();
+        }
+        ImGui::SameLine(); r::MetricsHelpMarker("Last jump trail and player bounds at predicted bounce contact");
 		if (ImGui::Checkbox("coordinates\t", &v::mod_coordinates.evar->enabled)) {
 			float val = (float)v::mod_coordinates.evar->enabled;
 			v::mod_coordinates.SetValue(&val, 1, 0);

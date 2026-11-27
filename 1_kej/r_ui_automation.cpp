@@ -31,6 +31,7 @@ void r::R_Automation_Features()
         Toggle("Halfbeat (A/D)", v::mod_halfbeat);
         ImGui::TextDisabled("%s | 250 switches: %u", automation.paraActive ? (automation.paraSide > 0 ? "Auto right" : "Auto left") : "Manual / idle", automation.auto250Switches);
         ImGui::TextDisabled("Default: WA / WD only");
+        ImGui::TextDisabled("Auto command: %s", bhopHookInstalled ? "ready" : "unavailable");
         Bind("Bind overwrite", v::mod_strafebot_ow, editOverwrite);
         EndPanel();
         BeginPanel("##slide_card", "Edge Slide", 190);
