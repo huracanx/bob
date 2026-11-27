@@ -14,26 +14,39 @@ void cg::Mod_A_Strafebot()
         lastGroundSide = 0;
     };
 	if (r::inputCaptured || !v::mod_strafebot.isEnabled() || clients->snap.ps.pm_type == PM_UFO || v::mod_strafebot.isEnabled() && (GetAsyncKeyState(v::mod_strafebot_ow.GetInt()) < 0) == true)
-	{ resetGround(); lastAirSide = 0; lastAirUpdate = 0; airSwitchTime = 0; return; }
+	{ automation.paraActive = false; resetGround(); lastAirSide = 0; lastAirUpdate = 0; airSwitchTime = 0; return; }
 
 	const usercmd_s* cmd = cinput->GetUserCmd(cinput->currentCmdNum - 1);
     if (!cmd) return;
     // Live movement input is used for air WA/WD; ground keeps its existing path.
     const char forward = input->move;
     const char sideMove = input->strafe;
-    const bool para = v::mod_auto_para.isEnabled() && forward > 0 && sideMove == 0 && !(GetAsyncKeyState('A') < 0) && !(GetAsyncKeyState('D') < 0);
+    // W-only modes are airborne only. Explicit A/D always wins.
+    const bool manual = sideMove != 0 || GetAsyncKeyState('A') < 0 || GetAsyncKeyState('D') < 0;
+    const bool airborne = NOT_GROUND && !jumpanalyzer.walking;
+    const bool para = airborne && forward > 0 && !manual &&
+        (v::mod_auto_para.isEnabled() || v::mod_auto_250.isEnabled());
     if (sideMove) automation.paraSide = sideMove > 0 ? 1 : -1;
     static bool was250 = false;
     static DWORD last250Switch = 0;
-    const bool in250 = para && NOT_GROUND && v::mod_autoFPS.isEnabled() &&
-        v::mod_fps_override.GetInt() == 0 && Mod_RecommendedFPS(AngleNormalize180(clients->cgameViewangles[YAW]), forward, sideMove) == 250;
     const DWORD switchNow = Sys_MilliSeconds();
-    if (v::mod_auto_250.isEnabled() && in250 && !was250 &&
-        (!last250Switch || switchNow-last250Switch >= 100)) {
-        automation.paraSide = -automation.paraSide;
-        last250Switch = switchNow;
+    automation.paraActive = para;
+    const bool auto250 = para && v::mod_auto_250.isEnabled() && v::mod_autoFPS.isEnabled() &&
+        v::mod_fps_override.GetInt() == 0;
+    if (!auto250) { was250 = false; last250Switch = 0; }
+    else {
+        const int zone = Mod_RecommendedFPS(AngleNormalize180(clients->cgameViewangles[YAW]), forward, 0);
+        const auto* currentFPS = Dvar_FindMalleableVar("com_maxfps");
+        const bool in250 = zone == 250 || (currentFPS && currentFPS->current.integer == 250);
+        if (in250 && !was250 && (!last250Switch || switchNow - last250Switch >= 100)) {
+            automation.paraSide = -automation.paraSide;
+            last250Switch = switchNow;
+            ++automation.auto250Switches;
+            was250 = true;
+        } else if (!in250 && (!last250Switch || switchNow - last250Switch >= 100)) {
+            was250 = false;
+        }
     }
-    was250 = in250;
 
     // WA/WD is the basic ground mode. It must not depend on the separate
     // "All Techniques" option; that option remains relevant to other patterns.
@@ -202,7 +215,7 @@ void cg::Mod_A_AdjustRPG(pmove_t* pm, pml_t* pml)
 namespace {
     DWORD slideArmedAt = 0, slideStartedAt = 0;
     int slideSavedFPS = 0, slideActiveMode = 0;
-    bool slideKeyDown = false, slidePatched = false, slideSawAir = false;
+    bool slideKeyDown = false, slidePatched = false, slideSawAir = false, slideContact = false;
 }
 void cg::Mod_A_CancelSliding()
 {
@@ -217,7 +230,7 @@ void cg::Mod_A_CancelSliding()
     automation.pendingSlide = automation.currentlySliding = automation.keybindPressed = false;
     slideArmedAt = slideStartedAt = 0;
     slideSavedFPS = slideActiveMode = 0;
-    slideSawAir = false;
+    slideSawAir = slideContact = false;
 }
 void cg::Mod_A_AutoSliding(pmove_t* pm, pml_t* pml)
 {
@@ -241,25 +254,37 @@ void cg::Mod_A_AutoSliding(pmove_t* pm, pml_t* pml)
             if (auto* fps = Dvar_FindMalleableVar("com_maxfps")) fps->current.integer = 15;
         }
         const DWORD duration = slideActiveMode == 1 ? 100 : 250;
-        if (now - slideStartedAt >= duration || (slideActiveMode == 2 && pml->walking)) Mod_A_CancelSliding();
+        if (pml->walking || pm->ps->groundEntityNum != ENTITYNUM_NONE || pml->groundPlane)
+            slideContact = true;
+        // Keep the slide active through the landing step, not just until it begins.
+        if ((slideContact && now - slideStartedAt >= duration) || now - slideStartedAt >= 500)
+            Mod_A_CancelSliding();
         return;
     }
     if (!automation.pendingSlide) return;
     if (!pml->walking && pm->ps->groundEntityNum == ENTITYNUM_NONE) slideSawAir = true;
-    if (now - slideArmedAt > 5000) { Mod_A_CancelSliding(); return; }
+    if (now - slideArmedAt > 15000) { Mod_A_CancelSliding(); return; }
     if (!slideSawAir) return;
+    // Predict an approaching surface using the player's bounding box and
+    // actual fall velocity; do not start on an arbitrary 100-unit proximity.
+    const bool contact = pml->walking || pm->ps->groundEntityNum != ENTITYNUM_NONE || pml->groundPlane;
+    const float vz = pm->ps->velocity[2];
+    bool landing = contact;
+    if (!landing && vz < 0.0f) {
+        const float horizon = mode == 2 ? 0.067f : glm::clamp(pml->frametime * 2.0f, 0.006f, 0.040f);
+        vec3_t end = {pm->ps->origin[0] + pm->ps->velocity[0] * horizon,
+                   pm->ps->origin[1] + pm->ps->velocity[1] * horizon,
+                   pm->ps->origin[2] + vz * horizon - 2.0f};
+        trace_t trace{};
+        PM_playerTrace(pm, &trace, pm->ps->origin, pm->mins, pm->maxs, end, pm->ps->clientNum, pm->tracemask);
+        landing = trace.fraction < 1.0f && !trace.startsolid && !trace.allsolid && trace.normal[2] > 0.0f;
+    }
+    if (!landing) return;
+    slideContact = contact;
     if (mode == 1) {
-        if (!pml->almostGroundPlane && !pml->groundPlane) return;
-        // Retain the existing engine method only on the expected original instruction.
         if (*reinterpret_cast<const BYTE*>(0x410660) != 0x83) { Mod_A_CancelSliding(); return; }
         hook h; h.write_addr(0x410660, "\xC3", 1); slidePatched = true;
     } else if (mode == 2) {
-        if (pml->walking || pm->ps->groundEntityNum != ENTITYNUM_NONE) return;
-        trace_t trace{};
-        vec3_t end(pm->ps->origin[0], pm->ps->origin[1], pm->ps->origin[2]);
-        end[2] -= 100.0f;
-        PM_playerTrace(pm, &trace, pm->ps->origin, pm->mins, pm->maxs, end, pm->ps->clientNum, pm->tracemask);
-        if (trace.fraction >= 1.0f || trace.startsolid || trace.allsolid) return;
         auto* fps = Dvar_FindMalleableVar("com_maxfps");
         if (!fps) { Mod_A_CancelSliding(); return; }
         slideSavedFPS = fps->current.integer; fps->current.integer = 15;

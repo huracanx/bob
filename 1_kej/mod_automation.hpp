@@ -17,6 +17,8 @@ namespace cg
 	//actively updating automation data
 	struct automation_s {
 		int paraSide = 1;
+        bool paraActive = false;
+        unsigned int auto250Switches = 0;
         bool keybindPressed;
 		bool pendingSlide;
 		bool currentlySliding;

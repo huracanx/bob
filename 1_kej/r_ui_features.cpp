@@ -655,25 +655,44 @@ void r::R_Features()
 {
     static int active = 0;
     const char* pages[] = { "Automation", "Jumping", "Rpg", "Visuals", "Map", "Home" };
-    ImGui::BeginChild("##sidebar", ImVec2(160, 0), true);
-    ImGui::TextColored(ImVec4(.69f,.55f,.59f,1), "BOB / TEST");
-    ImGui::Spacing();
+    ImGui::BeginChild("##sidebar", ImVec2(160, 0), false, ImGuiWindowFlags_NoScrollbar);
+    ImDrawList* draw = ImGui::GetWindowDrawList();
+    const ImVec2 origin = ImGui::GetWindowPos();
+    const ImVec2 extent = ImGui::GetWindowSize();
+    draw->AddRectFilled(origin, ImVec2(origin.x+extent.x,origin.y+extent.y), IM_COL32(32,32,32,255));
+    draw->AddLine(ImVec2(origin.x+159,origin.y),ImVec2(origin.x+159,origin.y+extent.y),IM_COL32(53,53,53,255));
+    ImGui::SetCursorPos(ImVec2(18,12));
+    ImGui::SetWindowFontScale(2.0f);
+    ImGui::TextColored(ImVec4(.70f,.56f,.60f,1), "BOB");
+    ImGui::SetWindowFontScale(1.0f);
+    ImGui::SetCursorPosY(78);
     for (int i=0; i<6; ++i) {
         if (i==0 || i==3 || i==5) {
-            ImGui::Spacing();
+            ImGui::SetCursorPosX(12);
             ImGui::TextDisabled("%s", i==0 ? "Movement" : i==3 ? "Visuals" : "Miscellaneous");
         }
-        if (ImGui::Selectable(pages[i], active==i, 0, ImVec2(0,30))) active=i;
-        if (active==i) {
-            const ImVec2 a=ImGui::GetItemRectMin(), b=ImGui::GetItemRectMax();
-            ImGui::GetWindowDrawList()->AddRectFilled(a, ImVec2(a.x+2,b.y), IM_COL32(174,139,148,255));
-        }
+        ImGui::SetCursorPosX(12);
+        ImGui::PushID(i);
+        ImGui::PushStyleColor(ImGuiCol_Text, active==i ? IM_COL32(245,245,245,255) : IM_COL32(115,115,115,255));
+        ImGui::PushStyleColor(ImGuiCol_Button, active==i ? IM_COL32(43,43,43,255) : IM_COL32(32,32,32,255));
+        ImGui::PushStyleVar(ImGuiStyleVar_ButtonTextAlign, ImVec2(0.22f,0.5f));
+        if (ImGui::Button(pages[i], ImVec2(135,30))) active=i;
+        ImGui::PopStyleVar(); ImGui::PopStyleColor(2);
+        const ImVec2 a=ImGui::GetItemRectMin(), b=ImGui::GetItemRectMax();
+        const ImU32 ink=active==i?IM_COL32(180,145,155,255):IM_COL32(94,94,94,255);
+        draw->AddCircle(ImVec2(a.x+13,(a.y+b.y)*0.5f),4,ink,12,1.5f);
+        if (active==i) draw->AddRectFilled(ImVec2(a.x,a.y+5), ImVec2(a.x+2,b.y-5), ink,1);
+        ImGui::PopID();
     }
-    if (ImGui::GetContentRegionAvail().y > 40) ImGui::SetCursorPosY(ImGui::GetWindowHeight()-40);
-    ImGui::Separator(); ImGui::TextDisabled("TEST BUILD");
+    if (ImGui::GetContentRegionAvail().y > 44) {
+        ImGui::SetCursorPos(ImVec2(9,extent.y-45));
+        ImGui::BeginChild("##build_badge",ImVec2(142,36),true,ImGuiWindowFlags_NoScrollbar);
+        ImGui::TextColored(ImVec4(.70f,.56f,.60f,1), "BOB  /  TEST");
+        ImGui::EndChild();
+    }
     ImGui::EndChild();
-    ImGui::SameLine();
-    ImGui::BeginChild("##static_tab_content", ImVec2(0,0), false, ImGuiWindowFlags_HorizontalScrollbar);
+    ImGui::SameLine(0,0);
+    ImGui::BeginChild("##static_tab_content", ImVec2(0,0), false, ImGuiWindowFlags_HorizontalScrollbar | ImGuiWindowFlags_AlwaysUseWindowPadding);
     R_DrawMenuByName(pages[active], false);
     ImGui::EndChild();
 }

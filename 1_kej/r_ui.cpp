@@ -95,12 +95,12 @@ void r::R_MenuStyle(float transparencyScale)
     ImGui::StyleColorsDark();
     ImGuiStyle& st = ImGui::GetStyle();
     st.Alpha = transparencyScale;
-    st.WindowPadding = ImVec2(10,10); st.FramePadding = ImVec2(8,5);
-    st.ItemSpacing = ImVec2(8,7); st.WindowRounding=10; st.ChildRounding=6;
+    st.WindowPadding = ImVec2(8,10); st.FramePadding = ImVec2(8,4);
+    st.ItemSpacing = ImVec2(8,8); st.WindowRounding=10; st.ChildRounding=6;
     st.FrameRounding=4; st.GrabRounding=4; st.ScrollbarRounding=4; st.ScrollbarSize=5;
     st.WindowBorderSize=1; st.ChildBorderSize=1; st.FrameBorderSize=1;
     auto* c=st.Colors;
-    c[ImGuiCol_WindowBg]=ImVec4(.11f,.11f,.11f,1);
+    c[ImGuiCol_WindowBg]=ImVec4(.10f,.10f,.10f,1);
     c[ImGuiCol_ChildBg]=ImVec4(.125f,.125f,.125f,1);
     c[ImGuiCol_Border]=ImVec4(.21f,.21f,.21f,1);
     c[ImGuiCol_FrameBg]=ImVec4(.115f,.115f,.115f,1);
@@ -223,8 +223,10 @@ bool r::R_OpenMenu(IDirect3DDevice9* pDevice)
         const ImVec2 fixedSize((viewport->Size.x * 0.92f < 838.0f ? viewport->Size.x * 0.92f : 838.0f),
                                (viewport->Size.y * 0.90f < 535.0f ? viewport->Size.y * 0.90f : 535.0f));
         ImGui::SetNextWindowSize(fixedSize, ImGuiCond_Always);
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0,0));
         ImGui::Begin("[ALPHA] 1_kej_v2 - github.com/kejjjjj/", &r::should_draw_menu,
                      ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoTitleBar);
+        ImGui::PopStyleVar();
         ImGui::SetWindowFontScale(1.0f);
         if (r::should_draw_menu) R_Features();
         ImGui::End();
