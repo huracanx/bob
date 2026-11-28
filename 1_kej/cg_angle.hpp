@@ -32,7 +32,7 @@ namespace cg
 	void CG_ApplySmoothing(float src, float dst, const float smoothing, float& out);
 
 	float getOptAngle(float& delta, const bool use_all_techs = false);
-	float getOptAngle(float& delta, const bool use_all_techs, const char forwardmove, const char rightmove);
+	float getOptAngle(float& delta, const bool use_all_techs, const char forwardmove, const char rightmove, int intendedFPS = 0);
 	float R_getOptAngle(const bool rightmove, float& delta); //more suited for visual stuff
 	float DistanceToOpt(float delta, const float& yaw);
 

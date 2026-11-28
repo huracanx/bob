@@ -223,7 +223,7 @@ float cg::getOptAngle(float& _opt, const bool all_techs)
     return getOptAngle(_opt, all_techs, input->move, input->strafe);
 }
 
-float cg::getOptAngle(float& _opt, const bool all_techs, const char forwardmoveIn, const char rightmoveIn)
+float cg::getOptAngle(float& _opt, const bool all_techs, const char forwardmoveIn, const char rightmoveIn, int intendedFPS)
 {
     // Use the movement values from the same usercmd that the strafe bot reads.
     char forwardmove = forwardmoveIn;
@@ -284,9 +284,8 @@ float cg::getOptAngle(float& _opt, const bool all_techs, const char forwardmoveI
 	float g_speed = speedDvar
 		? (float)speedDvar->current.integer
 		: (float)clients->snap.ps.speed;
-	const float FPS = fpsDvar
-		? (float)fpsDvar->current.integer
-		: (GROUND ? 333.0f : 125.0f);
+	const float FPS = intendedFPS > 0 ? static_cast<float>(intendedFPS) :
+        (fpsDvar ? static_cast<float>(fpsDvar->current.integer) : (GROUND ? 333.0f : 125.0f));
 
 	if (g_speed <= 0.0f || FPS <= 0.0f || _speed <= 0.0f)
 		return -400.0f;

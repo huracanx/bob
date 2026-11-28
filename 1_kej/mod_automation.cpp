@@ -228,6 +228,7 @@ void cg::Mod_A_Strafebot()
     }
     // In a restricted air mode the angle solver must use the same limit as
     // the zone selector (never a stale 125/200 or an explicit override).
+    int angleFPS = 0;
     if (RestrictedAirMode() && v::mod_autoFPS.isEnabled() && !automation.currentlySliding) {
         const float yaw = clients->cgameViewangles[YAW];
         auto* limit = Dvar_FindMalleableVar("com_maxfps");
@@ -245,7 +246,9 @@ void cg::Mod_A_Strafebot()
         }
         if (!fps) fps = fallbackFPS;
         jumpanalyzer.recommendedFPS = fps;
-        if (limit) limit->current.integer = fps;
+        // The solver can use the intended cap without writing the Dvar.
+        // AutoFPS submits the final cap through the engine command buffer.
+        angleFPS = fps;
     }
     if (NOT_GROUND)
         resetGround();
@@ -257,7 +260,7 @@ void cg::Mod_A_Strafebot()
 	else if (clients->viewangles[YAW] > 3000 || clients->viewangles[YAW] < -3000)
 		clients->viewangles[YAW] = fmodf(clients->viewangles[YAW], 360);
 
-	optYaw = getOptAngle(test, halfbeat, forward, effectiveSide);
+	optYaw = getOptAngle(test, halfbeat, forward, effectiveSide, angleFPS);
 	if (optYaw == -400.f || !std::isfinite(optYaw)) {
         resetGround();
         return;
@@ -407,7 +410,25 @@ void cg::Mod_A_AutoFPS()
         jumpanalyzer.recommendedFPS = fps;
     }
 	if (automation.currentlySliding && v::mod_autoslide.GetInt() == 2) fps = 15;
-    com_maxfps->current.integer = fps;
+    // Use the same engine command as a manual console FPS change. Do not
+    // write current/latched values or fabricate usercmd timings or HUD data.
+    if (com_maxfps->type != dvar_type::integer || fps < 0 ||
+        fps == com_maxfps->current.integer)
+        return;
+    // FPS slide has its own existing lifecycle; avoid a queued command
+    // surviving its short prediction step and changing the restored cap.
+    if (automation.currentlySliding && v::mod_autoslide.GetInt() == 2)
+        return;
+    static int lastRequested = -1;
+    static DWORD lastRequestAt = 0;
+    const DWORD now = Sys_MilliSeconds();
+    if (lastRequested == fps && now - lastRequestAt < 50)
+        return;
+    char command[48]{};
+    sprintf_s(command, sizeof(command), "com_maxfps %d\n", fps);
+    Cbuf_AddText(command, 0);
+    lastRequested = fps;
+    lastRequestAt = now;
 }
 void cg::Mod_A_AdjustRPG(pmove_t* pm, pml_t* pml)
 {
