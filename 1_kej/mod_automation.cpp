@@ -95,19 +95,49 @@ namespace {
             return true;
         }
         double Unwrap(double yaw) const { return lastYaw + std::remainder(yaw - lastYaw, 360.0); }
-        void Begin(double yaw, int direction, int speed) {
+        void Begin(double yaw, int direction, int speed, int initialFPS = 333) {
             Reset(); active = true; side = direction; lastYaw = yaw;
             origin = FindBandOrigin(yaw, direction, speed);
-            fps = 333;
+            fps = initialFPS;
         }
     } autoSector;
+    // One monotonic sequence per jump, independent of the W-only sector.
+    // Releasing W, changing A/D or opening the menu must not restart 3232.
+    struct Only3232Sequence {
+        int leg = 0;
+        DWORD confirmedAt = 0;
+        bool confirmed = false;
+        int FPS() const { return (leg % 2 == 0) ? 333 : 250; }
+        bool Final() const { return leg == 3; }
+        void Reset() { leg = 0; confirmedAt = 0; confirmed = false; }
+        void Observe(int appliedFPS, DWORD now) {
+            if (appliedFPS != FPS()) { confirmed = false; return; }
+            if (!confirmed) { confirmedAt = now; confirmed = true; }
+        }
+        bool Advance(DWORD now) {
+            const DWORD minimum = FPS() == 333 ? 65 : 40;
+            if (Final() || !confirmed || now - confirmedAt < minimum) return false;
+            ++leg;
+            confirmed = false;
+            return true;
+        }
+    };
     struct BounceGate {
         int lastStep = -1, pendingContact = -1;
         bool bounced = false;
+        Only3232Sequence sequence;
     } bounceGate;
     bool Auto250Allowed() {
-        return v::mod_auto_250.isEnabled() && v::mod_autoFPS.isEnabled() &&
-            !(v::mod_only3232.isEnabled() && bounceGate.bounced);
+        // Only 3232 also permits a W-only continuation without Auto 250.
+        return v::mod_autoFPS.isEnabled() &&
+            (v::mod_auto_250.isEnabled() || v::mod_only3232.isEnabled());
+    }
+    bool Auto250Restricted() {
+        return Auto250Allowed() && !(v::mod_only3232.isEnabled() && bounceGate.bounced);
+    }
+    void Observe3232Cap(DWORD now) {
+        const auto* cap = Dvar_FindMalleableVar("com_maxfps");
+        bounceGate.sequence.Observe(cap ? cap->current.integer : -1, now);
     }
 }
 
@@ -118,7 +148,7 @@ bool cg::Mod_A_Only3232Active() {
 }
 bool cg::Mod_A_RestrictedFPS() {
     return Mod_A_Only3232Active() ||
-        (AirborneForStrafe() && v::mod_strafebot.isEnabled() && Auto250Allowed());
+        (AirborneForStrafe() && v::mod_strafebot.isEnabled() && Auto250Restricted());
 }
 void cg::Mod_A_Reset3232() { bounceGate = {}; }
 void cg::Mod_A_Record3232Contact(int commandTime) {
@@ -130,8 +160,10 @@ void cg::Mod_A_Observe3232Step(pmove_t* pm, int previousGround) {
     if (pm->ps->pm_type != PM_NORMAL) { Mod_A_Reset3232(); return; }
     if (time <= bounceGate.lastStep) return;
     bounceGate.lastStep = time;
-    if (pm->ps->groundEntityNum != ENTITYNUM_NONE || previousGround != ENTITYNUM_NONE)
+    if (pm->ps->groundEntityNum != ENTITYNUM_NONE || previousGround != ENTITYNUM_NONE) {
         bounceGate.bounced = false;
+        bounceGate.sequence.Reset();
+    }
     if (pm->ps->groundEntityNum == ENTITYNUM_NONE && bounceGate.pendingContact == time)
         bounceGate.bounced = true;
     if (bounceGate.pendingContact <= time) bounceGate.pendingContact = -1;
@@ -200,19 +232,29 @@ void cg::Mod_A_Strafebot()
     const char sideMove = leftHeld != rightHeld ? (rightHeld ? 127 : -127) : 0;
     const bool diagonalInput = forward == 127 && sideMove != 0;
     const bool halfbeat = airborne && v::mod_halfbeat.isEnabled() && !wHeld && !sHeld && sideMove != 0;
-    // Commit a requested reversal before calculating the new side's angle.
-    // CL_FinishMove observes this same side on the outgoing command.
-    if (airborne && wHeld && !sHeld && !leftHeld && !rightHeld && autoSector.active && Auto250Allowed()) {
-        if (autoSector.Advance()) {
-            automation.paraSide = autoSector.side;
-            ++automation.auto250Switches;
+    const bool only3232 = Mod_A_Only3232Active();
+    const bool restricted = Mod_A_RestrictedFPS();
+    if (only3232) Observe3232Cap(Sys_MilliSeconds());
+    if (!restricted || (only3232 && autoSector.active && autoSector.fps != bounceGate.sequence.FPS()))
+        autoSector.Reset();
+    // Commit a requested transition before calculating the new side's angle.
+    // The finite sequence owns the number of transitions; sector resets do not.
+    if (airborne && wHeld && !sHeld && !leftHeld && !rightHeld && autoSector.active && restricted &&
+        (autoSector.transferPending || autoSector.reversePending)) {
+        if (only3232 && bounceGate.sequence.Final()) {
+            autoSector.transferPending = autoSector.reversePending = false;
+        } else if (!only3232 || bounceGate.sequence.Advance(Sys_MilliSeconds())) {
+            if (autoSector.Advance()) {
+                automation.paraSide = autoSector.side;
+                ++automation.auto250Switches;
+            }
         }
     }
     const int autoSide = Mod_A_AutoStrafeSide(airborne);
     const bool para = autoSide != 0 && airborne && forward == 127 && !leftHeld && !rightHeld;
     const char effectiveSide = para ? static_cast<char>(autoSide * 127) : sideMove;
     automation.paraActive = para;
-    if (!para) { autoSector.Reset(); automation.paraFPS = 0; }
+    if (!para || !restricted) { autoSector.Reset(); automation.paraFPS = 0; }
     if ((!airborne && !GROUND) || (!diagonalInput && !halfbeat && !para)) {
         resetGround();
         lastAirUpdate = 0;
@@ -221,17 +263,19 @@ void cg::Mod_A_Strafebot()
     // In a restricted air mode the angle solver must use the same limit as
     // the zone selector (never a stale 125/200 or an explicit override).
     int angleFPS = 0;
-    if (Mod_A_RestrictedFPS() && v::mod_autoFPS.isEnabled() && !automation.currentlySliding) {
+    if (restricted && v::mod_autoFPS.isEnabled() && !automation.currentlySliding) {
         const float yaw = clients->cgameViewangles[YAW];
         auto* limit = Dvar_FindMalleableVar("com_maxfps");
         const int fallbackFPS = limit && limit->current.integer == 250 ? 250 : 333;
         int fps = RestrictedZoneFPS(yaw, forward, effectiveSide, automation.paraSide, clients->snap.ps.speed);
         if (para && std::isfinite(yaw) && clients->snap.ps.speed > 0) {
             if (!autoSector.active || autoSector.side != automation.paraSide)
-                autoSector.Begin(yaw, automation.paraSide, clients->snap.ps.speed);
+                autoSector.Begin(yaw, automation.paraSide, clients->snap.ps.speed,
+                    only3232 ? bounceGate.sequence.FPS() : 333);
             fps = autoSector.fps;
             automation.paraFPS = fps;
         }
+        if (only3232) fps = bounceGate.sequence.FPS();
         if (!fps) fps = fallbackFPS;
         jumpanalyzer.recommendedFPS = fps;
         // The solver can use the intended cap without writing the Dvar.
@@ -288,10 +332,11 @@ void cg::Mod_A_Strafebot()
     lastAirUpdate = now;
     const float yaw = clients->cgameViewangles[YAW];
     const float error = AngleNormalize180(optYaw - yaw);
-    if (para) {
+    if (para && restricted) {
         if (!std::isfinite(yaw) || clients->snap.ps.speed <= 0) return;
         if (!autoSector.active || autoSector.side != side)
-            autoSector.Begin(yaw, side, clients->snap.ps.speed);
+            autoSector.Begin(yaw, side, clients->snap.ps.speed,
+                only3232 ? bounceGate.sequence.FPS() : 333);
         const double unwrapped = autoSector.Unwrap(yaw);
         const auto bands = MakeBands(clients->snap.ps.speed, side, autoSector.origin);
         const AirBand allowed = PhaseBand(bands, autoSector.fps, side, autoSector.origin);
@@ -329,10 +374,15 @@ void cg::Mod_A_Strafebot()
             const AirBand next = PhaseBand(bands, 250, side, autoSector.origin);
             if (next.hi - next.lo > 2 * margin) autoSector.transferPending = true;
         } else if (autoSector.fps == 250 && elapsed >= 40 && allowed.Contains(autoSector.lastYaw)) {
-            autoSector.reversePending = true;
+            // Second 250 is the terminal leg. Hold its cap and do not reverse
+            // back into 333 until a new jump (or ordinary post-bounce AutoFPS).
+            if (!only3232 || !bounceGate.sequence.Final())
+                autoSector.reversePending = true;
         }
         return;
     }
+    // The ordinary air solver also handles a W-only continuation after a
+    // bounce. No restricted band, forced 250/333 cap, or pending reversal.
     // No configurable or time-dependent smoothing on manual air strafes.
     // Apply the shortest correction in one update, including Halfbeat.
     clients->viewangles[YAW] += error;
@@ -340,6 +390,8 @@ void cg::Mod_A_Strafebot()
 }
 void cg::Mod_A_AutoFPS()
 {
+    if (!v::mod_only3232.isEnabled() || !v::mod_autoFPS.isEnabled() || GROUND)
+        bounceGate.sequence.Reset();
 	if (!v::mod_autoFPS.isEnabled() && !box500.boxExists && v::mod_autoFPS_hug500.GetInt() == 0)
 		return;
 
@@ -356,7 +408,9 @@ void cg::Mod_A_AutoFPS()
     if (v::mod_autoFPS.isEnabled() && NOT_GROUND && !r::inputCaptured) {
         const usercmd_s* cmd = cinput->GetUserCmd(cinput->currentCmdNum - 1);
         const char forward = v::mod_strafebot.isEnabled() ? input->move : (cmd ? cmd->forwardmove : 0);
-        const char side = v::mod_strafebot.isEnabled() ? input->strafe : (cmd ? cmd->rightmove : 0);
+        const char side = v::mod_strafebot.isEnabled() ?
+            (automation.paraActive ? static_cast<char>(automation.paraSide * 127) : input->strafe) :
+            (cmd ? cmd->rightmove : 0);
         if (forward != 0 || side != 0)
             jumpanalyzer.recommendedFPS = Mod_RecommendedFPS(
                 AngleNormalize180(clients->cgameViewangles[YAW]), forward, side);
@@ -398,8 +452,21 @@ void cg::Mod_A_AutoFPS()
         const int forward = GetAsyncKeyState('W') < 0 ? 127 : 0;
         const int side = strafe ? (strafe > 0 ? 1 : -1) : automation.paraSide;
         const int zone = RestrictedZoneFPS(clients->cgameViewangles[YAW], forward, strafe, side, clients->snap.ps.speed);
-        fps = automation.paraActive && automation.paraFPS ? automation.paraFPS :
-            (zone ? zone : (com_maxfps->current.integer == 250 ? 250 : 333));
+        if (Mod_A_Only3232Active()) {
+            const DWORD now = Sys_MilliSeconds();
+            Observe3232Cap(now);
+            // Manual WA/WD may advance the same sequence only into the next
+            // zone, after the engine has applied the previous cap. Automatic
+            // mode advances in Mod_A_Strafebot instead, never twice per frame.
+            if (!automation.paraActive && !r::inputCaptured && strafe != 0 &&
+                (forward != 0 || v::mod_halfbeat.isEnabled()) &&
+                zone != 0 && zone != bounceGate.sequence.FPS())
+                bounceGate.sequence.Advance(now);
+            fps = bounceGate.sequence.FPS();
+        } else {
+            fps = automation.paraActive && automation.paraFPS ? automation.paraFPS :
+                (zone ? zone : (com_maxfps->current.integer == 250 ? 250 : 333));
+        }
         jumpanalyzer.recommendedFPS = fps;
     }
 	if (v::mod_autoFPS.isEnabled() && v::mod_only3232.isEnabled() && GROUND) fps = 333;

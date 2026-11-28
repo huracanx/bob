@@ -52,7 +52,7 @@ void r::R_Automation_Features()
         ImGui::SetNextItemWidth(148); if(ImGui::Combo("Air FPS",&selected,names,4)) v::mod_fps_override.SetValue(static_cast<float>(limits[selected]));
         const char* hug[]={"Disabled","333","500","1000"};
         ImGui::SetNextItemWidth(148); if(ImGui::Combo("Bounce FPS",&v::mod_autoFPS_hug500.evar->intValue,hug,4)) v::mod_autoFPS_hug500.SetValue(static_cast<float>(v::mod_autoFPS_hug500.GetInt()));
-        ImGui::TextWrapped("Only 3232: 333 / 250 until bounce; normal AutoFPS after contact.");
+        ImGui::TextWrapped("Only 3232: 333 > 250 > 333 > 250; hold 250 until bounce, then normal AutoFPS.");
         EndPanel();
         BeginPanel("##500_card", "500 FPS area", 200);
         Toggle("Enable spawning",v::mod_auto500_enabled);
