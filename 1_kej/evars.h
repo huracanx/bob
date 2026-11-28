@@ -44,6 +44,8 @@ namespace v
 		mod_FPS_cylindrical,
 		mod_autoFPS,
 		mod_autoFPS_long125,
+        mod_autoFPS_zone166,
+        mod_autoFPS_zone142,
 		mod_autoFPS_hug500,
 		mod_auto500_enabled,
 		mod_strafebot,

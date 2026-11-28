@@ -282,6 +282,11 @@ void cg::Mod_A_Strafebot()
         // AutoFPS submits the final cap through the engine command buffer.
         angleFPS = fps;
     }
+    if (!restricted && Mod_ExtraFPSZonesActive()) {
+        const int recommended = Mod_RecommendedFPS(
+            AngleNormalize180(clients->cgameViewangles[YAW]), forward, effectiveSide);
+        angleFPS = recommended;
+    }
     if (NOT_GROUND)
         resetGround();
 
@@ -416,6 +421,10 @@ void cg::Mod_A_AutoFPS()
                 AngleNormalize180(clients->cgameViewangles[YAW]), forward, side);
     }
     int fps = jumpanalyzer.recommendedFPS ? jumpanalyzer.recommendedFPS : com_maxfps->current.integer;
+    if ((fps == 166 && !v::mod_autoFPS_zone166.isEnabled()) ||
+        (fps == 142 && !v::mod_autoFPS_zone142.isEnabled())) {
+        fps = 333;
+    }
 
 	if (!v::mod_autoFPS.isEnabled())
 		fps = com_maxfps->current.integer;

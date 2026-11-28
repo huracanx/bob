@@ -35,6 +35,8 @@ namespace cg {
 	void Mod_JumpAnalyzer(pmove_t* pm, pml_t* pml);
 	void Mod_RPGAnalyzer(pmove_t* pm, pml_t* pml);
 	int32_t Mod_RecommendedFPS(float yaw, char forwardmove, char rightmove);
+    bool Mod_ExtraFPSZonesActive();
+    int32_t Mod_FPSForPhase(float phase, bool rightSide, float fov, bool extra);
 
 	void Mod_DetermineFPS(pmove_t* pm, pml_t* pml);
 	void Mod_BounceCalculator();

@@ -318,6 +318,8 @@ void Evar_Setup()
 	v::mod_only3232.Register("1_kej_only3232", evartype_t::EVAR_BOOL, (float)0, true);
 	v::mod_auto_250.Register("1_kej_auto_250", evartype_t::EVAR_BOOL, (float)0, true);
 	v::mod_fps_override.Register("1_kej_fps_override", evartype_t::EVAR_INT, (float)0, true);
+    v::mod_autoFPS_zone166.Register("1_kej_autofps_zone166", evartype_t::EVAR_BOOL, 0.0f, true);
+    v::mod_autoFPS_zone142.Register("1_kej_autofps_zone142", evartype_t::EVAR_BOOL, 0.0f, true);
 	v::mod_edge_key.Register("1_kej_edge_key", evartype_t::EVAR_INT, (float)0, true);
 	v::mod_autoslide.Register		("1_kej_autoslide",					evartype_t::EVAR_INT,		(float)0,				true);
 	v::mod_autoanglerpg.Register	("1_kej_autoanglerpg",				evartype_t::EVAR_BOOL,		(float)0,				true);

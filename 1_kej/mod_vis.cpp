@@ -266,6 +266,34 @@ void cg::Mod_DrawFPSHelpers()
 		//r::R_DrawRect("white", 958, BAR_START_Y - 10, 4, BAR_HEIGHT + 20, vec4_t{ 1,1,1,255 });
 
 
+    if (Mod_ExtraFPSZonesActive()) {
+        // Render the same optional selector as AutoFPS, in the helper's
+        // folded 90-degree phase coordinates. Half-degree sampling is a
+        // display approximation; the actual selector is continuous.
+        if (v::mod_fps_transferz.evar->arrayValue[0] != 0) {
+            const vec4_t color166 = {0.35f, 0.75f, 1.0f, 1.0f};
+            const vec4_t color142 = {0.85f, 0.40f, 1.0f, 1.0f};
+            int previous = 0;
+            float begin = 0.0f;
+            for (int i = 0; i <= 180; ++i) {
+                const float phase = i * 0.5f;
+                const int nextFPS = i == 180 ? 0 : Mod_FPSForPhase(phase + 0.25f, rightmove, fov, true);
+                if (nextFPS == previous) continue;
+                if (previous == 166 || previous == 142) {
+                    for (int copy = -2; copy <= 1; ++copy) {
+                        const float offset = copy * 90.0f;
+                        CG_FillAngleYaw(begin + offset, phase + offset, yaw, BAR_START_Y,
+                            BAR_HEIGHT, fov, previous == 166 ? color166 : color142, true, cylindrical);
+                    }
+                }
+                previous = nextFPS;
+                begin = phase;
+            }
+        }
+        jumpanalyzer.recommendedFPS = Mod_FPSForPhase(yaw, rightmove, fov, true);
+        return;
+    }
+
 	range_t ranges, ranges2;
 
 	if (!isLong125) {
