@@ -184,6 +184,7 @@ void cg::CG_RemoveHooks()
 	a->remove(&(PVOID&)r::CG_DrawActive_f, r::CG_DrawActive);
     Mod_A_CancelSliding();
     Mod_A_ResetStrafeDirection();
+    Mod_A_Reset3232();
     Mod_ResetHitVisualizer();
     RemoveBhopHook();
     if (pmoveHookInstalled && a->remove(&(PVOID&)Pmove_f, Pmove) == NO_ERROR)

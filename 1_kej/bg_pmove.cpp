@@ -6,7 +6,8 @@ BOOL cg::PM_SlideMove(pmove_t* pm, pml_t* pml, int gravity)
 {
     trace_t visualTrace{};
     vec3_t start{}, end{};
-    const bool inspect = v::mod_hit_visualizer.evar && v::mod_hit_visualizer.isEnabled() &&
+    const bool inspect = ((v::mod_hit_visualizer.evar && v::mod_hit_visualizer.isEnabled()) ||
+        (v::mod_only3232.evar && v::mod_only3232.isEnabled())) &&
         pm && pm->ps && pml && pm->ps == &cgs->predictedPlayerState && pm->ps->pm_type == PM_NORMAL &&
         pm->ps->groundEntityNum == ENTITYNUM_NONE && pm->ps->velocity[2] < 0.0f;
     if (inspect) {
@@ -23,6 +24,7 @@ BOOL cg::PM_SlideMove(pmove_t* pm, pml_t* pml, int gravity)
         vec3_t contact{};
         for (int i = 0; i < 3; ++i) contact[i] = start[i] + (end[i] - start[i]) * visualTrace.fraction;
         Mod_RecordBounceContact(pm, pm->cmd.serverTime, contact);
+        Mod_A_Record3232Contact(pm->cmd.serverTime);
     }
 
 	jumpanalyzer.velocity_clipped = clipped > 0;
@@ -64,6 +66,11 @@ void cg::PM_AirMove(pmove_t* pm, pml_t* pml)
 	jumpanalyzer.walking = pml->walking;
 
 	Mod_HitAnalyzer(pm, pml);
+    // Existing slope analyzer is a secondary signal if the read-only sweep
+    // misses a contact during a complex multi-plane slide.
+    if (pm->ps == &cgs->predictedPlayerState && jumpanalyzer.hasBounced &&
+        jumpanalyzer.bounceTime == pm->ps->commandTime && pm->ps->velocity[2] > 0.0f)
+        Mod_A_Record3232Contact(pm->cmd.serverTime);
 	Mod_JumpAnalyzer(pm, pml);
 	Mod_A_AdjustRPG(pm, pml);
 
@@ -209,6 +216,7 @@ void cg::Pmove(pmove_t* pm)
         VectorCopy(pm->ps->origin, previousOrigin);
 		PmoveSingle(pm);
         Mod_RecordJumpStep(pm, previousGround, previousOrigin);
+        Mod_A_Observe3232Step(pm, previousGround);
 
 		//jumpanalyzer.commandTime = pm->ps->commandTime;
 		jumpanalyzer.serverTime = pm->cmd.serverTime;
@@ -323,8 +331,7 @@ void cg::Mod_DetermineFPS(pmove_t* pm, pml_t* pml)
 	fps_zones.fps250 = round((float)ps->speed / 4) + 10;
 	fps_zones.fps333 = round((float)ps->speed / 3) + 10;
 	
-	const bool long125 = v::mod_autoFPS_long125.isEnabled() && !(v::mod_strafebot.isEnabled() && NOT_GROUND &&
-        (v::mod_auto_para.isEnabled() || v::mod_auto_250.isEnabled()));
+	const bool long125 = v::mod_autoFPS_long125.isEnabled() && !Mod_A_RestrictedFPS();
 	const float diff = ((float)ps->speed / 190.f);
 
 

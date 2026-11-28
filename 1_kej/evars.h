@@ -50,7 +50,7 @@ namespace v
 		mod_strafebot_all,
 		mod_strafebot_ow,
 		mod_halfbeat,
-		mod_auto_para,
+		mod_only3232,
 		mod_auto_250,
 		mod_fps_override,
 		mod_edge_key,

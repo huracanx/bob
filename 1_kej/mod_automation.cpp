@@ -68,75 +68,73 @@ namespace {
         return ps.pm_type == PM_NORMAL && ps.groundEntityNum == ENTITYNUM_NONE &&
             !(ps.pm_flags & (PMF_MANTLE | PMF_LADDER | PMF_DUCKED | PMF_PRONE));
     }
+    // The two bands are traversed separately, rather than waiting for the
+    // end of their union. Do not reselect a neighbouring 90-degree sector.
+    AirBand PhaseBand(const AirBands& bands, int fps, int side, double origin) {
+        AirBand band = fps == 250 ? bands.fps250 : bands.fps333;
+        if (fps == 250) {
+            if (side < 0) band.lo = glm::max(band.lo, bands.fps333.hi);
+            else band.hi = glm::min(band.hi, bands.fps333.lo);
+        }
+        band.lo = glm::max(band.lo, origin);
+        band.hi = glm::min(band.hi, origin + 90.0);
+        return band;
+    }
     struct AutoSector {
-        bool active = false, finished = false, reversePending = false, transferPending = false, entering = false;
-        unsigned int legs = 0;
+        bool active = false, reversePending = false, transferPending = false;
         int side = 0, fps = 0;
         double origin = 0.0, lastYaw = 0.0;
-        void Reset() { active = finished = reversePending = transferPending = entering = false; legs = 0; side = fps = 0; }
-        // Returns true only for an actual left/right reversal.
-        bool Advance(bool repeat) {
+        DWORD phaseStart = 0;
+        void Reset() { active = reversePending = transferPending = false; side = fps = 0; phaseStart = 0; }
+        bool Advance() {
             if (transferPending) {
-                transferPending = false;
-                fps = fps == 333 ? 250 : 333;
-                entering = true;
-                return false;
+                transferPending = false; fps = 250; phaseStart = 0; return false;
             }
             if (!reversePending) return false;
-            reversePending = false;
-            ++legs;
-            if (!repeat && legs >= 2) {
-                active = false; finished = true; return false;
-            }
-            side = -side; fps = 333; entering = true;
+            reversePending = false; side = -side; fps = 333; phaseStart = 0;
             return true;
         }
-        double Unwrap(double yaw) const {
-            return lastYaw + std::remainder(yaw - lastYaw, 360.0);
-        }
-        void Begin(double yaw, int direction, int speed, int fallbackFPS) {
+        double Unwrap(double yaw) const { return lastYaw + std::remainder(yaw - lastYaw, 360.0); }
+        void Begin(double yaw, int direction, int speed) {
             Reset(); active = true; side = direction; lastYaw = yaw;
             origin = FindBandOrigin(yaw, direction, speed);
-            fps = MakeBands(speed, direction, origin).At(yaw);
-            if (!fps) {
-                const auto bands = MakeBands(speed, direction, origin);
-                const auto distance = [yaw](AirBand band) {
-                    if (band.hi <= band.lo) return 1e30;
-                    return yaw < band.lo ? band.lo - yaw : yaw > band.hi ? yaw - band.hi : 0.0;
-                };
-                const double d333 = distance(bands.fps333), d250 = distance(bands.fps250);
-                fps = d250 < d333 ? 250 : d333 < d250 ? 333 : (fallbackFPS == 250 ? 250 : 333);
-            }
+            fps = 333;
         }
     } autoSector;
-    bool RestrictedAirMode() {
-        return v::mod_strafebot.isEnabled() && AirborneForStrafe() && !autoSector.finished &&
-            (v::mod_auto_para.isEnabled() || v::mod_auto_250.isEnabled());
+    struct BounceGate {
+        int lastStep = -1, pendingContact = -1;
+        bool bounced = false;
+    } bounceGate;
+    bool Auto250Allowed() {
+        return v::mod_auto_250.isEnabled() && v::mod_autoFPS.isEnabled() &&
+            !(v::mod_only3232.isEnabled() && bounceGate.bounced);
     }
-    // Stay inside the initial absolute 90-degree sector. Auto Para traverses
-    // one 333 band in each direction; Auto 250 can extend the leg into 250.
-    AirBand LegBand(const AirBands& bands, int heldFPS, bool repeat, double origin) {
-        AirBand allowed = repeat && heldFPS == 250 ? bands.fps250 : bands.fps333;
-        const AirBand other = heldFPS == 250 ? bands.fps333 : bands.fps250;
-        if (repeat && other.hi > other.lo && other.lo <= allowed.hi + 0.001 && other.hi >= allowed.lo - 0.001) {
-            allowed.lo = glm::min(allowed.lo, other.lo);
-            allowed.hi = glm::max(allowed.hi, other.hi);
-        }
-        allowed.lo = glm::max(allowed.lo, origin);
-        allowed.hi = glm::min(allowed.hi, origin + 90.0);
-        return allowed;
-    }
-    // When bands are disjoint at a non-default g_speed, cross the small gap
-    // explicitly in one update instead of driving through an invalid FPS zone.
-    bool CanTransfer(const AirBands& bands, const AirBand& allowed, int fps, double direction, double origin) {
-        AirBand other = fps == 333 ? bands.fps250 : bands.fps333;
-        other.lo = glm::max(other.lo, origin);
-        other.hi = glm::min(other.hi, origin + 90.0);
-        if (other.hi - other.lo <= .08) return false;
-        const double gap = direction > 0 ? other.lo - allowed.hi : allowed.lo - other.hi;
-        return gap > .001 && gap <= 12.0;
-    }
+}
 
+bool cg::Mod_A_Only3232Active() {
+    const auto& ps = cgs->predictedPlayerState;
+    return v::mod_only3232.isEnabled() && v::mod_autoFPS.isEnabled() && !bounceGate.bounced &&
+        ps.pm_type == PM_NORMAL && ps.groundEntityNum == ENTITYNUM_NONE;
+}
+bool cg::Mod_A_RestrictedFPS() {
+    return Mod_A_Only3232Active() ||
+        (AirborneForStrafe() && v::mod_strafebot.isEnabled() && Auto250Allowed());
+}
+void cg::Mod_A_Reset3232() { bounceGate = {}; }
+void cg::Mod_A_Record3232Contact(int commandTime) {
+    if (commandTime > bounceGate.lastStep) bounceGate.pendingContact = commandTime;
+}
+void cg::Mod_A_Observe3232Step(pmove_t* pm, int previousGround) {
+    if (!pm || !pm->ps || pm->ps != &cgs->predictedPlayerState || clc.demoplaying) return;
+    const int time = pm->ps->commandTime;
+    if (pm->ps->pm_type != PM_NORMAL) { Mod_A_Reset3232(); return; }
+    if (time <= bounceGate.lastStep) return;
+    bounceGate.lastStep = time;
+    if (pm->ps->groundEntityNum != ENTITYNUM_NONE || previousGround != ENTITYNUM_NONE)
+        bounceGate.bounced = false;
+    if (pm->ps->groundEntityNum == ENTITYNUM_NONE && bounceGate.pendingContact == time)
+        bounceGate.bounced = true;
+    if (bounceGate.pendingContact <= time) bounceGate.pendingContact = -1;
 }
 
 void cg::Mod_A_ResetStrafeDirection()
@@ -167,10 +165,10 @@ int cg::Mod_A_AutoStrafeSide(bool airborne)
         if (!(airborne && v::mod_halfbeat.isEnabled() && a != d && !back)) automation.paraSide = 0;
         return 0;
     }
-    if (!airborne || !(v::mod_auto_para.isEnabled() || v::mod_auto_250.isEnabled())) {
+    if (!airborne || !Auto250Allowed()) {
         autoSector.Reset(); return 0;
     }
-    if (a || d || !bhopHookInstalled || autoSector.finished) return 0;
+    if (a || d || !bhopHookInstalled) return 0;
     return automation.paraSide;
 }
 
@@ -204,23 +202,17 @@ void cg::Mod_A_Strafebot()
     const bool halfbeat = airborne && v::mod_halfbeat.isEnabled() && !wHeld && !sHeld && sideMove != 0;
     // Commit a requested reversal before calculating the new side's angle.
     // CL_FinishMove observes this same side on the outgoing command.
-    if (airborne && wHeld && !sHeld && !leftHeld && !rightHeld && autoSector.active &&
-        (v::mod_auto_para.isEnabled() || v::mod_auto_250.isEnabled()) &&
-        (autoSector.reversePending || autoSector.transferPending)) {
-        if (!v::mod_auto_250.isEnabled() && autoSector.transferPending) {
-            autoSector.transferPending = false;
-            autoSector.reversePending = true;
-        }
-        if (autoSector.Advance(v::mod_auto_250.isEnabled())) {
+    if (airborne && wHeld && !sHeld && !leftHeld && !rightHeld && autoSector.active && Auto250Allowed()) {
+        if (autoSector.Advance()) {
             automation.paraSide = autoSector.side;
-            if (v::mod_auto_250.isEnabled()) ++automation.auto250Switches;
+            ++automation.auto250Switches;
         }
     }
     const int autoSide = Mod_A_AutoStrafeSide(airborne);
     const bool para = autoSide != 0 && airborne && forward == 127 && !leftHeld && !rightHeld;
     const char effectiveSide = para ? static_cast<char>(autoSide * 127) : sideMove;
     automation.paraActive = para;
-    if (!para) { if (!autoSector.finished) autoSector.Reset(); automation.paraFPS = 0; }
+    if (!para) { autoSector.Reset(); automation.paraFPS = 0; }
     if ((!airborne && !GROUND) || (!diagonalInput && !halfbeat && !para)) {
         resetGround();
         lastAirUpdate = 0;
@@ -229,18 +221,14 @@ void cg::Mod_A_Strafebot()
     // In a restricted air mode the angle solver must use the same limit as
     // the zone selector (never a stale 125/200 or an explicit override).
     int angleFPS = 0;
-    if (RestrictedAirMode() && v::mod_autoFPS.isEnabled() && !automation.currentlySliding) {
+    if (Mod_A_RestrictedFPS() && v::mod_autoFPS.isEnabled() && !automation.currentlySliding) {
         const float yaw = clients->cgameViewangles[YAW];
         auto* limit = Dvar_FindMalleableVar("com_maxfps");
         const int fallbackFPS = limit && limit->current.integer == 250 ? 250 : 333;
         int fps = RestrictedZoneFPS(yaw, forward, effectiveSide, automation.paraSide, clients->snap.ps.speed);
         if (para && std::isfinite(yaw) && clients->snap.ps.speed > 0) {
             if (!autoSector.active || autoSector.side != automation.paraSide)
-                autoSector.Begin(yaw, automation.paraSide, clients->snap.ps.speed, fallbackFPS);
-            const auto bands = MakeBands(clients->snap.ps.speed, autoSector.side, autoSector.origin);
-            const int zone = bands.At(autoSector.Unwrap(yaw));
-            if (v::mod_auto_250.isEnabled() && zone && !autoSector.entering) autoSector.fps = zone;
-            if (!v::mod_auto_250.isEnabled()) autoSector.fps = 333;
+                autoSector.Begin(yaw, automation.paraSide, clients->snap.ps.speed);
             fps = autoSector.fps;
             automation.paraFPS = fps;
         }
@@ -302,41 +290,46 @@ void cg::Mod_A_Strafebot()
     const float error = AngleNormalize180(optYaw - yaw);
     if (para) {
         if (!std::isfinite(yaw) || clients->snap.ps.speed <= 0) return;
-        const bool repeat = v::mod_auto_250.isEnabled();
-        if (!autoSector.active || autoSector.side != side) {
-            const auto* limit = Dvar_FindMalleableVar("com_maxfps");
-            autoSector.Begin(yaw, side, clients->snap.ps.speed, limit ? limit->current.integer : 333);
-        }
+        if (!autoSector.active || autoSector.side != side)
+            autoSector.Begin(yaw, side, clients->snap.ps.speed);
         const double unwrapped = autoSector.Unwrap(yaw);
         const auto bands = MakeBands(clients->snap.ps.speed, side, autoSector.origin);
-        const AirBand allowed = LegBand(bands, autoSector.fps, repeat, autoSector.origin);
-        const double margin = 0.04;
-        if (allowed.hi - allowed.lo <= 2 * margin) return;
-        // Positive rightmove turns toward decreasing yaw; left toward increasing.
-        const double direction = -static_cast<double>(side);
-        const double edge = direction > 0 ? allowed.hi - margin : allowed.lo + margin;
-        const double target = glm::clamp(unwrapped + error, allowed.lo + margin, allowed.hi - margin);
-        // On reversal the old side's 250 band may not exist for the new side.
-        // Enter its 333 band directly; the sector origin never changes.
-        if (!autoSector.entering && (unwrapped < allowed.lo - 12.0 || unwrapped > allowed.hi + 12.0)) {
-            autoSector.active = false; autoSector.finished = true;
-            automation.paraActive = false; automation.paraFPS = 0;
+        const AirBand allowed = PhaseBand(bands, autoSector.fps, side, autoSector.origin);
+        constexpr double margin = 0.08;
+        if (allowed.hi - allowed.lo <= 2 * margin) {
+            // A custom g_speed may not have a valid 250 band. Do not spin
+            // into an adjacent sector or request an impossible angle.
+            autoSector.Reset(); automation.paraActive = false; automation.paraFPS = 0;
             return;
         }
+        const double direction = -static_cast<double>(side);
+        const double edge = direction > 0 ? allowed.hi - margin : allowed.lo + margin;
+        const auto* cap = Dvar_FindMalleableVar("com_maxfps");
+        const bool inside = allowed.Contains(unwrapped);
+        const bool capApplied = cap && cap->current.integer == autoSector.fps;
+        if (!capApplied) autoSector.phaseStart = 0;
+        if (inside && capApplied && !autoSector.phaseStart) autoSector.phaseStart = now;
+        const DWORD elapsed = autoSector.phaseStart ? now - autoSector.phaseStart : 0;
+        // Shorten each leg: 333 for at least 65 ms, then 250 for 40 ms.
+        // If optimal yaw stalls, guide toward the 333 boundary after 95 ms.
+        // Actual cap must have been applied before any phase can complete.
+        double target = glm::clamp(unwrapped + error, allowed.lo + margin, allowed.hi - margin);
+        if (autoSector.fps == 333 && elapsed >= 95) target = edge;
+        if (autoSector.fps == 250) {
+            const double near = direction > 0 ? allowed.lo + margin : allowed.hi - margin;
+            target = glm::clamp(target, glm::min(near, edge), glm::max(near, edge));
+        }
         const float delta = static_cast<float>(target - unwrapped);
-        const float bounded = autoSector.entering ? delta : glm::clamp(delta, -360.0f * dt, 360.0f * dt);
-        autoSector.entering = false;
+        const float bounded = glm::clamp(delta, -720.0f * dt, 720.0f * dt);
         clients->viewangles[YAW] += bounded;
         autoSector.lastYaw = unwrapped + bounded;
-        const int next = bands.At(autoSector.lastYaw);
-        if (repeat && next) autoSector.fps = next;
-        else if (!repeat) autoSector.fps = 333;
         automation.paraFPS = autoSector.fps;
-        // Require actual arrival, not just an optimal-angle request past the edge.
-        if (std::fabs(autoSector.lastYaw - edge) <= 0.08 && (target - edge) * direction >= -0.08) {
-            if (repeat && CanTransfer(bands, allowed, autoSector.fps, direction, autoSector.origin))
-                autoSector.transferPending = true;
-            else autoSector.reversePending = true;
+        if (autoSector.fps == 333 && elapsed >= 65 &&
+            std::fabs(autoSector.lastYaw - edge) <= 0.16) {
+            const AirBand next = PhaseBand(bands, 250, side, autoSector.origin);
+            if (next.hi - next.lo > 2 * margin) autoSector.transferPending = true;
+        } else if (autoSector.fps == 250 && elapsed >= 40 && allowed.Contains(autoSector.lastYaw)) {
+            autoSector.reversePending = true;
         }
         return;
     }
@@ -395,9 +388,9 @@ void cg::Mod_A_AutoFPS()
 
 	// Ground jump height and ground strafe gain.
 	if (v::mod_autoFPS.isEnabled() && !box500.use500 && GROUND)
-		fps = spaceHeld ? 125 : 333;
+		fps = v::mod_only3232.isEnabled() ? 333 : (spaceHeld ? 125 : 333);
 
-    if (v::mod_autoFPS.isEnabled() && RestrictedAirMode() && !r::inputCaptured) {
+    if (v::mod_autoFPS.isEnabled() && Mod_A_RestrictedFPS() && (!r::inputCaptured || Mod_A_Only3232Active())) {
         const bool left = GetAsyncKeyState('A') < 0;
         const bool right = GetAsyncKeyState('D') < 0;
         const int strafe = left != right ? (right ? 127 : -127) :
@@ -409,7 +402,8 @@ void cg::Mod_A_AutoFPS()
             (zone ? zone : (com_maxfps->current.integer == 250 ? 250 : 333));
         jumpanalyzer.recommendedFPS = fps;
     }
-	if (automation.currentlySliding && v::mod_autoslide.GetInt() == 2) fps = 15;
+	if (v::mod_autoFPS.isEnabled() && v::mod_only3232.isEnabled() && GROUND) fps = 333;
+    if (automation.currentlySliding && v::mod_autoslide.GetInt() == 2) fps = 15;
     // Use the same engine command as a manual console FPS change. Do not
     // write current/latched values or fabricate usercmd timings or HUD data.
     if (com_maxfps->type != dvar_type::integer || fps < 0 ||

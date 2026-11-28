@@ -315,7 +315,7 @@ void Evar_Setup()
 	v::mod_strafebot_ow.Register	("1_kej_strafebot_ow",				evartype_t::EVAR_INT,		(float)0,				true);
 
 	v::mod_halfbeat.Register("1_kej_halfbeat", evartype_t::EVAR_BOOL, (float)0, true);
-	v::mod_auto_para.Register("1_kej_auto_para", evartype_t::EVAR_BOOL, (float)0, true);
+	v::mod_only3232.Register("1_kej_only3232", evartype_t::EVAR_BOOL, (float)0, true);
 	v::mod_auto_250.Register("1_kej_auto_250", evartype_t::EVAR_BOOL, (float)0, true);
 	v::mod_fps_override.Register("1_kej_fps_override", evartype_t::EVAR_INT, (float)0, true);
 	v::mod_edge_key.Register("1_kej_edge_key", evartype_t::EVAR_INT, (float)0, true);

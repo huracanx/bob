@@ -36,6 +36,11 @@ namespace cg
 	void Mod_A_Strafebot();
     int Mod_A_AutoStrafeSide(bool airborne);
     void Mod_A_ResetStrafeDirection();
+    bool Mod_A_RestrictedFPS();
+    bool Mod_A_Only3232Active();
+    void Mod_A_Record3232Contact(int commandTime);
+    void Mod_A_Observe3232Step(pmove_t* pm, int previousGround);
+    void Mod_A_Reset3232();
 	void Mod_A_AutoFPS();
 	void Mod_A_AdjustRPG(pmove_t* pm, pml_t* pml);
 	void Mod_A_AutoSliding(pmove_t* pm, pml_t* pml);
