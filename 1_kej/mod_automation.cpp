@@ -316,8 +316,8 @@ void cg::Mod_A_Strafebot()
         double target = glm::clamp(unwrapped + error, allowed.lo + margin, allowed.hi - margin);
         if (autoSector.fps == 333 && elapsed >= 95) target = edge;
         if (autoSector.fps == 250) {
-            const double near = direction > 0 ? allowed.lo + margin : allowed.hi - margin;
-            target = glm::clamp(target, glm::min(near, edge), glm::max(near, edge));
+            const double nearEdge = direction > 0 ? allowed.lo + margin : allowed.hi - margin;
+            target = glm::clamp(target, glm::min(nearEdge, edge), glm::max(nearEdge, edge));
         }
         const float delta = static_cast<float>(target - unwrapped);
         const float bounded = glm::clamp(delta, -720.0f * dt, 720.0f * dt);
