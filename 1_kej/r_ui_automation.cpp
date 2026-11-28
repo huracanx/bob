@@ -54,7 +54,7 @@ void r::R_Automation_Features()
         Toggle("166 FPS zone", v::mod_autoFPS_zone166);
         Toggle("142 FPS zone", v::mod_autoFPS_zone142);
         ImGui::EndDisabled();
-        ImGui::TextDisabled("Extra zones: automatic, outside 3232/Auto 250");
+        ImGui::TextWrapped("Extra zones: after bounce only; 333/250 take priority.");
         const char* hug[]={"Disabled","333","500","1000"};
         ImGui::SetNextItemWidth(148); if(ImGui::Combo("Bounce FPS",&v::mod_autoFPS_hug500.evar->intValue,hug,4)) v::mod_autoFPS_hug500.SetValue(static_cast<float>(v::mod_autoFPS_hug500.GetInt()));
         ImGui::TextWrapped("Only 3232: 333 > 250 > 333 > 250; hold 250 until bounce, then normal AutoFPS.");

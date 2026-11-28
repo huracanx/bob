@@ -141,6 +141,12 @@ namespace {
     }
 }
 
+bool cg::Mod_A_HasBouncedThisFlight() {
+    const auto& ps = cgs->predictedPlayerState;
+    return bounceGate.bounced && bounceGate.lastStep >= 0 &&
+        ps.commandTime >= bounceGate.lastStep && ps.pm_type == PM_NORMAL &&
+        ps.groundEntityNum == ENTITYNUM_NONE;
+}
 bool cg::Mod_A_Only3232Active() {
     const auto& ps = cgs->predictedPlayerState;
     return v::mod_only3232.isEnabled() && v::mod_autoFPS.isEnabled() && !bounceGate.bounced &&
@@ -285,7 +291,7 @@ void cg::Mod_A_Strafebot()
     if (!restricted && Mod_ExtraFPSZonesActive()) {
         const int recommended = Mod_RecommendedFPS(
             AngleNormalize180(clients->cgameViewangles[YAW]), forward, effectiveSide);
-        angleFPS = recommended;
+        if (recommended == 166 || recommended == 142) angleFPS = recommended;
     }
     if (NOT_GROUND)
         resetGround();
@@ -421,9 +427,13 @@ void cg::Mod_A_AutoFPS()
                 AngleNormalize180(clients->cgameViewangles[YAW]), forward, side);
     }
     int fps = jumpanalyzer.recommendedFPS ? jumpanalyzer.recommendedFPS : com_maxfps->current.integer;
-    if ((fps == 166 && !v::mod_autoFPS_zone166.isEnabled()) ||
-        (fps == 142 && !v::mod_autoFPS_zone142.isEnabled())) {
+    // Drop stale automatic recommendations immediately when the bounce gate
+    // closes or a zone is disabled. Explicit fixed caps are handled below.
+    if ((fps == 166 || fps == 142) && (!Mod_ExtraFPSZonesActive() ||
+        (fps == 166 && !v::mod_autoFPS_zone166.isEnabled()) ||
+        (fps == 142 && !v::mod_autoFPS_zone142.isEnabled()))) {
         fps = 333;
+        jumpanalyzer.recommendedFPS = fps;
     }
 
 	if (!v::mod_autoFPS.isEnabled())

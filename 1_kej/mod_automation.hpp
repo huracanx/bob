@@ -38,6 +38,7 @@ namespace cg
     void Mod_A_ResetStrafeDirection();
     bool Mod_A_RestrictedFPS();
     bool Mod_A_Only3232Active();
+    bool Mod_A_HasBouncedThisFlight();
     void Mod_A_Record3232Contact(int commandTime);
     void Mod_A_Observe3232Step(pmove_t* pm, int previousGround);
     void Mod_A_Reset3232();

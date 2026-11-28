@@ -131,18 +131,24 @@ namespace {
         return (std::round(step * x) * x + std::round(step * y) * y) * 1000.0 / msec;
     }
     int SelectExtraFPS(int baseline, double phase, int speed, bool use166, bool use142) {
-        if (speed <= 0 || !std::isfinite(phase)) return baseline;
+        // Optional zones must never displace the established 333/250 bands.
+        if ((baseline != 125 && baseline != 200) || speed <= 0 || !std::isfinite(phase))
+            return baseline;
         int best = baseline;
-        double score = ExtraFPSScore(baseline, phase, speed);
-        // Preserve the existing zone on ties; the optional candidates only
-        // replace it when their estimated snapped acceleration is greater.
-        if (use166) {
-            const double candidate = ExtraFPSScore(166, phase, speed);
-            if (candidate > score + 0.01) { best = 166; score = candidate; }
-        }
-        if (use142) {
-            const double candidate = ExtraFPSScore(142, phase, speed);
-            if (candidate > score + 0.01) best = 142;
+        double bestMargin = 0.0;
+        // Require a positive advantage throughout a small angular window,
+        // not just at a single snap boundary. Keep this a conservative heuristic.
+        for (const int fps : {166, 142}) {
+            if ((fps == 166 && !use166) || (fps == 142 && !use142)) continue;
+            double margin = 1e30;
+            for (int i = -4; i <= 4; ++i) {
+                const double angle = phase + 0.25 * i;
+                const double reference = ExtraFPSScore(baseline, angle, speed);
+                const double required = reference * 0.05 > 5.0 ? reference * 0.05 : 5.0;
+                const double gain = ExtraFPSScore(fps, angle, speed) - reference - required;
+                if (gain < margin) margin = gain;
+            }
+            if (margin > bestMargin) { best = fps; bestMargin = margin; }
         }
         return best;
     }
@@ -212,7 +218,7 @@ static int BaseFPSForPhase(float yaw, bool rightSide, float fov)
 }
 bool cg::Mod_ExtraFPSZonesActive()
 {
-    return v::mod_autoFPS.isEnabled() && NOT_GROUND &&
+    return v::mod_autoFPS.isEnabled() && NOT_GROUND && Mod_A_HasBouncedThisFlight() &&
         !Mod_A_RestrictedFPS() && v::mod_fps_override.GetInt() == 0 &&
         (v::mod_autoFPS_zone166.isEnabled() || v::mod_autoFPS_zone142.isEnabled());
 }
@@ -222,7 +228,14 @@ int32_t cg::Mod_FPSForPhase(float phase, bool rightSide, float fov, bool extra)
     if (!std::isfinite(phase)) return 333;
     const float folded = phase;
     const int baseline = BaseFPSForPhase(folded, rightSide, fov);
-    if (!extra) return baseline;
+    if (!extra || !Mod_ExtraFPSZonesActive()) return baseline;
+    // Preserve a one-degree guard band around existing 333/250 zones and
+    // around changes of the original baseline. Never expand into a neighbor.
+    if (baseline != 125 && baseline != 200) return baseline;
+    for (int i = -4; i <= 4; ++i) {
+        float sample = std::fmod(folded + i * 0.25f + 180.0f, 180.0f);
+        if (BaseFPSForPhase(sample, rightSide, fov) != baseline) return baseline;
+    }
     return SelectExtraFPS(baseline, folded, clients->snap.ps.speed,
         v::mod_autoFPS_zone166.isEnabled(), v::mod_autoFPS_zone142.isEnabled());
 }

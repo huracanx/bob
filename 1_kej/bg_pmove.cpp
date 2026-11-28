@@ -7,7 +7,10 @@ BOOL cg::PM_SlideMove(pmove_t* pm, pml_t* pml, int gravity)
     trace_t visualTrace{};
     vec3_t start{}, end{};
     const bool inspect = ((v::mod_hit_visualizer.evar && v::mod_hit_visualizer.isEnabled()) ||
-        (v::mod_only3232.evar && v::mod_only3232.isEnabled())) &&
+        (v::mod_only3232.evar && v::mod_only3232.isEnabled()) ||
+        (v::mod_autoFPS.evar && v::mod_autoFPS.isEnabled() &&
+            ((v::mod_autoFPS_zone166.evar && v::mod_autoFPS_zone166.isEnabled()) ||
+             (v::mod_autoFPS_zone142.evar && v::mod_autoFPS_zone142.isEnabled())))) &&
         pm && pm->ps && pml && pm->ps == &cgs->predictedPlayerState && pm->ps->pm_type == PM_NORMAL &&
         pm->ps->groundEntityNum == ENTITYNUM_NONE && pm->ps->velocity[2] < 0.0f;
     if (inspect) {
