@@ -15,7 +15,6 @@ namespace v
 	inline evar_o
 		mod_velometer,
 		mod_velometer_glow,
-		mod_rpg_mode,
 		mod_coordinates,
 		mod_hitanalyzer,
         mod_hit_visualizer,
@@ -71,9 +70,6 @@ namespace v
 		mod_bounce_angle,
 		mod_bounce_calc,
 		mod_bounce_calcw2s,
-		mod_use_jump_anim,
-		mod_smooth_rpg_anim,
-		mod_jump_anim,
 		mod_disallow_hb,
 		mod_loaded_cfg,
 		mod_wcol_patch_clips,

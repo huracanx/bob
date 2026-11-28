@@ -417,20 +417,12 @@ void Visual_Features()
 }
 void RPG_Features()
 {
-	static int rpg_mode;
-	static const char* items[] = { "default", "switch", "sustain" };
-
 	ImGui::Text(" RPG\t"); 
-	r::UI_DrawGradientZone(ImVec2(245, 130));
+	r::UI_DrawGradientZone(ImVec2(245, 95));
 
 	ImGui::Text("\t");
 	ImGui::SameLine();
 	ImGui::BeginGroup();
-
-	ImGui::PushItemWidth(150);
-
-	if(ImGui::Combo("Mode\t", &rpg_mode, items, 3))
-		v::mod_rpg_mode.SetValue(items[rpg_mode]);
 
 	if (ImGui::Checkbox("RPG timing", &v::mod_rpg_timing.evar->enabled)) {
 		v::mod_rpg_timing.SetValue(v::mod_rpg_timing.isEnabled());
@@ -530,47 +522,6 @@ void Jump_Features()
 		ImGui::SameLine(); ImGui::Text("  ");
 
 		ImGui::EndGroup();
-	}
-	ImGui::Text("\nAnimations\t");
-	{
-
-
-		r::UI_DrawGradientZone(ImVec2(270, 130));
-
-		ImGui::Text("\t");
-		ImGui::SameLine();
-		ImGui::BeginGroup();
-
-		if (ImGui::Checkbox("Use Animations", &v::mod_use_jump_anim.evar->enabled)) {
-			v::mod_use_jump_anim.SetValue(v::mod_use_jump_anim.evar->enabled);
-		} ImGui::SameLine(); 			r::MetricsHelpMarker("Use custom weapon animations after jumping (requires sprinting)");
-
-
-
-		if (!v::mod_use_jump_anim.isEnabled())
-			ImGui::BeginDisabled();
-
-		if (v::mod_smooth_rpg_anim.isEnabled())
-			ImGui::BeginDisabled();
-
-		ImGui::Text("\t");
-		ImGui::SameLine(); ImGui::PushItemWidth(100);
-		ImGui::Combo("Anim\t\t", &v::mod_jump_anim.evar->intValue, WEAPON_ANIMS, 30);
-
-		if (v::mod_smooth_rpg_anim.isEnabled())
-			ImGui::EndDisabled();
-
-		if (ImGui::Checkbox("RPG jump", &v::mod_smooth_rpg_anim.evar->enabled)) {
-			v::mod_smooth_rpg_anim.SetValue(v::mod_smooth_rpg_anim.evar->enabled);
-		} /*ImGui::SameLine(); 			r::MetricsHelpMarker(""); */
-
-
-
-		if (!v::mod_use_jump_anim.isEnabled())
-			ImGui::EndDisabled();
-
-		ImGui::EndGroup();
-
 	}
 	ImGui::Text("\nBounce Calculator\t");
 	{

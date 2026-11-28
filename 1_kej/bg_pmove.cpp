@@ -1,7 +1,5 @@
 #include "pch.h"
 
-bool anim_can_use; // true after touching ground to avoid spam mid-air
-
 BOOL cg::PM_SlideMove(pmove_t* pm, pml_t* pml, int gravity)
 {
     trace_t visualTrace{};
@@ -47,11 +45,6 @@ void cg::PM_WalkMove(pmove_t* pm, pml_t* pml)
 	Mod_A_AdjustRPG(pm, pml);
 
 
-
-	
-	if((pm->cmd.buttons & 8194) != 0 || (pm->oldcmd.buttons & 8194) != 0)
-		anim_can_use = true;
-
 	glob_pm = reinterpret_cast<pmove_t*>(pm);
 	glob_pml = reinterpret_cast<pml_t*>(pml);
 
@@ -80,54 +73,6 @@ void cg::PM_AirMove(pmove_t* pm, pml_t* pml)
 
 
 	
-
-	//animations
-	static DWORD ms = Sys_MilliSeconds(), anim_time = 0;
-	static bool activeAnim = false, wait_anim = 0;
-
-	if(anim_can_use)
-		pm->ps->weapAnim = 0;
-
-	if (!v::mod_smooth_rpg_anim.isEnabled()) {
-		if (v::mod_use_jump_anim.isEnabled() && !activeAnim/* && pm->ps->weapAnim == 0*/ /*&& pm->ps->weapAnim != (WEAP_SPRINT_LOOP | ~pm->ps->weapAnim & 0x200)*/ && anim_can_use && pm->ps->jumpTime + 250 < pm->cmd.serverTime) {
-			pm->ps->weapAnim = 0;
-			pm->ps->weapAnim = v::mod_jump_anim.GetInt() | ~pm->ps->weapAnim & 0x200;
-			ms = Sys_MilliSeconds();
-			activeAnim = true;
-			anim_can_use = false;
-		}
-		else if (activeAnim && ms + 2 < Sys_MilliSeconds()) {
-			pm->ps->weapAnim = 0;
-			activeAnim = false;
-
-		}
-	}
-	else if (v::mod_smooth_rpg_anim.isEnabled()) {
-		
-		if (anim_can_use || wait_anim) {
-
-			if (!wait_anim && (clients->snap.ps.weapon == BG_FindWeaponIndexForName("rpg_mp") || clients->snap.ps.weapon == BG_FindWeaponIndexForName("rpg_sustain_mp"))) {
-				anim_can_use = false;
-				//CG_SelectWeaponIndex(BG_FindWeaponIndexForName("deserteaglegold_mp"), cgs->clientNum);
-				SendCommand("weapnext");
-				anim_time = Sys_MilliSeconds();
-				wait_anim = true;
-			}
-			
-			else if(anim_time != 0) {
-				if (Sys_MilliSeconds() - anim_time > 2) {
-					CG_SelectWeaponIndex(BG_FindWeaponIndexForName(v::mod_rpg_mode.GetString() == "sustain" ? "rpg_sustain_mp" : "rpg_mp"), cgs->clientNum);
-					wait_anim = false;
-					anim_time = 0;
-				}
-			}
-
-
-		}
-
-	}
-
-
 
 	glob_pm = reinterpret_cast<pmove_t*>(pm);
 	glob_pml = reinterpret_cast<pml_t*>(pml);

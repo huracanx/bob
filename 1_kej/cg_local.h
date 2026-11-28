@@ -1206,42 +1206,6 @@ enum weapAnimNumber_t
 	WEAP_NIGHTVISION_REMOVE = 0x1D,
 	MAX_WP_ANIMATIONS = 0x1E,
 };
-inline const char* WEAPON_ANIMS[30] {
-
-	"WEAP_IDLE",
-	"WEAP_FORCE_IDLE",
-	"WEAP_ATTACK",
-	"WEAP_ATTACK_LASTSHOT",
-	"WEAP_RECHAMBER",
-	"WEAP_ADS_ATTACK",
-	"WEAP_ADS_ATTACK_LASTSHOT",
-	"WEAP_ADS_RECHAMBER",
-	"WEAP_MELEE_ATTACK",
-	"WEAP_MELEE_CHARGE",
-	"WEAP_DROP",
-	"WEAP_RAISE",
-	"WEAP_FIRST_RAISE",
-	"WEAP_RELOAD",
-	"WEAP_RELOAD_EMPTY",
-	"WEAP_RELOAD_START",
-	"WEAP_RELOAD_END",
-	"WEAP_ALTSWITCHFROM",
-	"WEAP_ALTSWITCHTO",
-	"WEAP_QUICK_DROP",
-	"WEAP_QUICK_RAISE",
-	"WEAP_EMPTY_DROP",
-	"WEAP_EMPTY_RAISE",
-	"WEAP_SPRINT_IN",
-	"WEAP_SPRINT_LOOP",
-	"WEAP_SPRINT_OUT",
-	"WEAP_HOLD_FIRE",
-	"WEAP_DETONATE",
-	"WEAP_NIGHTVISION_WEAR",
-	"WEAP_NIGHTVISION_REMOVE"
-	//"MAX_WP_ANIMATIONS",
-
-};
-
 // playerState_t is the information needed by both the client and server
 // to predict player motion and actions
 // nothing outside of pmove should modify these, or some degree of prediction error

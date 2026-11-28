@@ -270,7 +270,6 @@ void Evar_Setup()
 	v::mod_velometer.Register		("1_kej_velometer",					evartype_t::EVAR_ARRAY,		mod_velometer, 4,		true); //enabled, x, y, scale
 	v::mod_velometer_glow.Register	("1_kej_velometer_glow",			evartype_t::EVAR_VEC4,		vec4_t{1,0,0,1},		true);
 
-	v::mod_rpg_mode.Register		("1_kej_rpg_mode",					evartype_t::EVAR_STRING,	"default",				true);
 
 	v::mod_coordinates.Register		("1_kej_coordinates",				evartype_t::EVAR_ARRAY,		mod_coordinates, 4,		true); //enabled, x, y, scale
     v::mod_hit_visualizer.Register("1_kej_hit_visualizer", evartype_t::EVAR_BOOL, 0.0f, true);
@@ -341,10 +340,7 @@ void Evar_Setup()
 	v::mod_bounce_calc.Register		("1_kej_bounce_calc",				evartype_t::EVAR_BOOL,		(float)0,				true);
 	v::mod_bounce_calcw2s.Register	("1_kej_bounce_calcw2s",			evartype_t::EVAR_BOOL,		(float)0,				true);
 
-	v::mod_use_jump_anim.Register	("1_kej_use_jump_anim",				evartype_t::EVAR_BOOL,		(float)0,				true);
-	v::mod_smooth_rpg_anim.Register ("1_kej_smooth_rpg_anim",			evartype_t::EVAR_BOOL,		(float)0,				true);
 
-	v::mod_jump_anim.Register		("1_kej_jump_anim",					evartype_t::EVAR_INT,		(float)WEAP_FIRST_RAISE,true);
 	v::mod_disallow_hb.Register		("1_kej_disallow_hb",				evartype_t::EVAR_BOOL,		(float)0,				true);
 	v::mod_loaded_cfg.Register		("1_kej_loaded_cfg",				evartype_t::EVAR_STRING,	"1_kej",				true);
 

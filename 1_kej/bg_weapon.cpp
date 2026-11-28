@@ -30,7 +30,6 @@ void _test(int delay)
 }
 __declspec(naked) void cg::PM_Weapon_WeaponTimeAdjust()
 {
-	static int delayedAction;
 	static DWORD _retn = 0x41A4E7;
 	static DWORD fnc = 0x418C80;
 	//bool& cant_fire = jumpanalyzer.weapon_cant_fire;
@@ -42,10 +41,14 @@ __declspec(naked) void cg::PM_Weapon_WeaponTimeAdjust()
 		add esp, 4;
 		mov ecx, ebp;
 		mov ebx, eax;
+		// The diagnostic callback must not alter the original weapon routine context.
+		pushfd;
+		pushad;
 		push eax;
 		call _test;
 		add esp, 0x4;
-		//mov[jumpanalyzer + 18], eax;
+		popad;
+		popfd;
 		jmp _retn;
 	}
 }
@@ -71,19 +74,4 @@ size_t cg::G_GetWeaponsList(int* weapons)
 
 	}
 	return count;
-}
-uint32_t cg::CG_SelectWeaponIndex(uint32_t weaponIndex, int localClientNum)
-{
-	uint32_t out = 0;
-	__asm
-	{
-		mov eax, weaponIndex;
-		mov ecx, localClientNum;
-		mov esi, 0x458F10;
-		call esi;
-		mov out, eax;
-
-	}
-
-	return out;
 }
