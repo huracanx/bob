@@ -39,6 +39,45 @@ HRESULT __stdcall r::draw_func(IDirect3DDevice9* pDevice)
 	return pEndScene(pDevice);
 }
 
+// Publish the actual local FPS cap using CoD4X's normal UserCVAR path.
+// Keep telemetry separate from com_maxfps and never change movement or server FPS.
+static void PublishClientFPSLimit()
+{
+    static int lastQueuedLimit = -1;
+    static ULONGLONG lastQueuedAt = 0;
+    if (clientUI[0].connectionState != CA_ACTIVE || clc.demoplaying)
+        return;
+
+    const auto* limit = Dvar_FindMalleableVar("com_maxfps");
+    if (!limit || limit->type != dvar_type::integer)
+        return;
+    const int value = limit->current.integer;
+    if (value < 0)
+        return;
+
+    // Check the actual UserCVAR as well, in case a config reset removed it.
+    const auto* published = Dvar_FindMalleableVar("client_fps_limit");
+    char valueText[24]{};
+    sprintf_s(valueText, sizeof(valueText), "%d", value);
+    const bool matches = published && (published->flags & dvar_flags::user_info) &&
+        ((published->type == dvar_type::string && published->current.string &&
+          strcmp(published->current.string, valueText) == 0) ||
+         (published->type == dvar_type::integer && published->current.integer == value));
+    if (matches)
+        return;
+
+    // Coalesce rapid zone changes rather than flood the reliable command queue.
+    const ULONGLONG now = GetTickCount64();
+    if (lastQueuedLimit >= 0 && now - lastQueuedAt < 1000)
+        return;
+
+    char command[64]{};
+    sprintf_s(command, sizeof(command), "setu client_fps_limit %d\n", value);
+    Cbuf_AddText(command, 0);
+    lastQueuedLimit = value;
+    lastQueuedAt = now;
+}
+
 void __cdecl r::CG_DrawActive()
 {
     if (r::inputCaptured) {
@@ -59,6 +98,7 @@ void __cdecl r::CG_DrawActive()
 			Mod_DrawAngleHelper();
 			Mod_A_Strafebot();
 			Mod_A_AutoFPS();
+            PublishClientFPSLimit();
 			Mod_DisallowHalfbeat();
 		}
 		
